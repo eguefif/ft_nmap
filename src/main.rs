@@ -36,18 +36,25 @@ fn send(mut tx: Box<dyn DataLinkSender>) {
             MutableIpv4Packet::new(&mut buffer).expect("Impossible to create mutable IP packet");
         set_ip_packet(&mut ip_packet);
     }
-    {
-        let mut tcp_packet = MutableTcpPacket::new(&mut buffer[20..])
-            .expect("Impossible to create mutable tcp packet");
-        set_tcp_packet(&mut tcp_packet);
-    }
+    let mut tcp_packet =
+        MutableTcpPacket::new(&mut buffer[20..]).expect("Impossible to create mutable tcp packet");
+    set_tcp_packet(&mut tcp_packet);
 
     let mut ip_packet = MutableIpv4Packet::new(&mut buffer).unwrap();
     let checksum = pnet::util::checksum(ip_packet.packet(), 0);
     ip_packet.set_checksum(0);
     ip_packet.set_checksum(checksum);
-    println!("buffer {:x?}", &buffer[20..50]);
-    //tx.send_to(&buffer, None);
+    ip_packet.set_total_length(20 + 24);
+    println!("buffer {:x?}", &buffer[0..44]);
+    if let Some(res) = tx.send_to(&buffer[0..44], None) {
+        if let Err(e) = res {
+            eprintln!("Error: {e}");
+        } else {
+            eprintln!("Packet sent");
+        }
+    } else {
+        eprintln!("Packet sent");
+    }
 }
 
 fn set_ip_packet(packet: &mut MutableIpv4Packet) {
@@ -55,8 +62,7 @@ fn set_ip_packet(packet: &mut MutableIpv4Packet) {
     packet.set_ttl(100);
     packet.set_next_level_protocol(IpNextHeaderProtocols::Tcp);
     packet.set_identification(process::id() as u16);
-    //TODO: checksum
-    packet.set_header_length(20);
+    packet.set_header_length(5);
     packet.set_total_length(21);
     packet.set_destination(Ipv4Addr::new(192, 168, 2, 1));
     packet.set_source(Ipv4Addr::new(192, 168, 2, 23));
