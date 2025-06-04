@@ -2,8 +2,13 @@ use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::{
     interfaces, ChannelType, Config, DataLinkReceiver, DataLinkSender, NetworkInterface,
 };
-use pnet::packet::ipv4::Ipv4Packet;
+use pnet::packet::ip::IpNextHeaderProtocols;
+use pnet::packet::ipv4::{Ipv4Packet, MutableIpv4Packet};
 use pnet::packet::tcp::{MutableTcpPacket, TcpPacket};
+use pnet::packet::Packet;
+use std::net::Ipv4Addr;
+use std::process;
+use std::thread;
 
 const PORT_SOURCE: u16 = 32123;
 
@@ -19,17 +24,47 @@ fn main() {
             Err(e) => panic!("Error: {e}"),
         };
 
+        thread::spawn(move || listen(rx));
         send(tx);
-        listen(rx);
     }
 }
 
-fn send(mut tx: Box<dyn DataLinkSender + 'static>) {
-    let mut buffer = [0; 4096];
-    let mut packet =
-        MutableTcpPacket::new(&mut buffer).expect("Impossible to create mutable tcp packet");
+fn send(mut tx: Box<dyn DataLinkSender>) {
+    let mut buffer = [0u8; 1500];
+    {
+        let mut ip_packet =
+            MutableIpv4Packet::new(&mut buffer).expect("Impossible to create mutable IP packet");
+        set_ip_packet(&mut ip_packet);
+    }
+    {
+        let mut tcp_packet = MutableTcpPacket::new(&mut buffer[20..])
+            .expect("Impossible to create mutable tcp packet");
+        set_tcp_packet(&mut tcp_packet);
+    }
+
+    let mut ip_packet = MutableIpv4Packet::new(&mut buffer).unwrap();
+    let checksum = pnet::util::checksum(ip_packet.packet(), 0);
+    ip_packet.set_checksum(0);
+    ip_packet.set_checksum(checksum);
+    println!("buffer {:x?}", &buffer[20..50]);
+    //tx.send_to(&buffer, None);
+}
+
+fn set_ip_packet(packet: &mut MutableIpv4Packet) {
+    packet.set_version(4);
+    packet.set_ttl(100);
+    packet.set_next_level_protocol(IpNextHeaderProtocols::Tcp);
+    packet.set_identification(process::id() as u16);
+    //TODO: checksum
+    packet.set_header_length(20);
+    packet.set_total_length(21);
+    packet.set_destination(Ipv4Addr::new(192, 168, 2, 1));
+    packet.set_source(Ipv4Addr::new(192, 168, 2, 23));
+}
+
+fn set_tcp_packet(packet: &mut MutableTcpPacket) {
     packet.set_source(PORT_SOURCE);
-    packet.set_source(80);
+    packet.set_destination(80);
 }
 
 fn get_main_interface() -> Option<NetworkInterface> {
