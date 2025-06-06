@@ -1,63 +1,48 @@
-use ft_nmap::interface::get_main_interface;
-use ft_nmap::packet_crafter::get_syn_packet;
-use std::thread;
-
-use pnet::datalink::Channel::Ethernet;
-use pnet::datalink::{ChannelType, Config, DataLinkReceiver, DataLinkSender};
-use pnet::packet::ipv4::Ipv4Packet;
-use pnet::packet::tcp::TcpPacket;
+use ft_nmap::syn_scan::run_syn_scan;
+use ft_nmap::{Params, Scan};
+use std::env;
 
 fn main() {
-    if let Some(iface) = get_main_interface() {
-        println!("Starting working on interface: {}", iface.name);
-        let mut config = Config::default();
-        config.channel_type = ChannelType::Layer3(0x800);
+    let params = get_params();
+    run(params);
+}
 
-        let (rx, tx) = match pnet::datalink::channel(&iface, config) {
-            Ok(Ethernet(tx, rx)) => (rx, tx),
-            Ok(_) => panic!("Channel format not handled"),
-            Err(e) => panic!("Error: {e}"),
-        };
-
-        thread::spawn(move || listen(rx));
-        send(tx);
+fn run(params: Params) {
+    match params.scan {
+        Scan::SYN => run_syn_scan(params),
+        Scan::REG => todo!(),
     }
 }
 
-fn send(mut tx: Box<dyn DataLinkSender>) {
-    let mut buffer = [0u8; 1500];
-    get_syn_packet(&mut buffer);
-    if let Some(res) = tx.send_to(&buffer[0..44], None) {
-        if let Err(e) = res {
-            eprintln!("Error: {e}");
-        } else {
-            eprintln!("Packet sent");
+fn get_params() -> Params {
+    let mut params = Params::default();
+    for arg in env::args() {
+        if arg.chars().nth(0).unwrap() != '-' {
+            continue;
         }
-    } else {
-        eprintln!("Packet sent");
+        let (flag, value) = get_param(arg);
+        println!("flag {}, value {:?}", flag, value);
+        match flag.as_str() {
+            "i" => params.interface = value,
+            "s" => params.scan = Scan::from_char(value),
+            _ => panic!("Error: unhandled flag"),
+        }
     }
+
+    params
 }
 
-fn listen(mut rx: Box<dyn DataLinkReceiver + 'static>) {
-    loop {
-        match rx.next() {
-            Ok(packet) => {
-                let ip_packet = Ipv4Packet::new(packet).unwrap();
-                let tcp_packet = TcpPacket::new(packet).unwrap();
-                println!("New packet:");
-                println!(
-                    "IP Source: {}:{}",
-                    ip_packet.get_source(),
-                    tcp_packet.get_source()
-                );
-                println!(
-                    "IP Drst: {}:{}",
-                    ip_packet.get_destination(),
-                    tcp_packet.get_destination()
-                );
-                println!();
-            }
-            Err(e) => eprintln!("Error while processing packet: {e}"),
-        }
+fn get_param(arg: String) -> (String, Option<String>) {
+    let flag = arg
+        .chars()
+        .nth(1)
+        .expect("Error: need an option after -")
+        .to_string();
+    let mut splits = arg.split_whitespace();
+    // TODO: get value differently, -sS differnt than -i wlo1
+    splits.next();
+    if let Some(value) = splits.next() {
+        return (flag, Some(value.to_string()));
     }
+    (flag, None)
 }
