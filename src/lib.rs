@@ -1,3 +1,7 @@
+pub mod interface;
+pub mod packet_crafter;
+pub mod syn_scan;
+
 pub enum Scan {
     REG,
     SYN,
@@ -6,7 +10,7 @@ pub enum Scan {
 impl Scan {
     pub fn from_char(value: Option<String>) -> Scan {
         if let Some(value) = value {
-            let scan = value.chars().nth(1).expect("Error: -s needs a value");
+            let scan = value.chars().nth(0).expect("Error: -s needs a value");
             match scan {
                 'S' => Scan::SYN,
                 'R' => Scan::REG,
@@ -31,7 +35,3 @@ impl Params {
         }
     }
 }
-
-pub mod interface;
-pub mod packet_crafter;
-pub mod syn_scan;
