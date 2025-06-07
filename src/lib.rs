@@ -1,3 +1,5 @@
+use std::net::Ipv4Addr;
+
 pub mod interface;
 pub mod packet_crafter;
 pub mod syn_scan;
@@ -8,10 +10,9 @@ pub enum Scan {
 }
 
 impl Scan {
-    pub fn from_char(value: Option<String>) -> Scan {
-        if let Some(value) = value {
-            let scan = value.chars().nth(0).expect("Error: -s needs a value");
-            match scan {
+    pub fn from_char(value: Option<char>) -> Scan {
+        if let Some(scan_value) = value {
+            match scan_value {
                 'S' => Scan::SYN,
                 'R' => Scan::REG,
                 _ => panic!("Error: invalid -s scan type"),
@@ -23,17 +24,17 @@ impl Scan {
 }
 
 pub struct Params {
-    pub interface: Option<String>,
+    pub iname: String,
     pub scan: Scan,
-    pub dest_addr: Option<String>,
+    pub dest_addr: Ipv4Addr,
 }
 
 impl Params {
     pub fn default() -> Self {
         Self {
-            interface: None,
+            iname: "wlo1".to_string(),
             scan: Scan::REG,
-            dest_addr: None,
+            dest_addr: Ipv4Addr::new(127, 0, 0, 1),
         }
     }
 }

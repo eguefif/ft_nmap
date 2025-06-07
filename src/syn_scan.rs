@@ -1,4 +1,3 @@
-use crate::interface::get_interface;
 use crate::packet_crafter::{get_syn_packet, PORT_SOURCE};
 use crate::Params;
 use pnet::packet::ip::IpNextHeaderProtocols;
@@ -12,8 +11,6 @@ use pnet::transport::TransportProtocol::Ipv4;
 use pnet::transport::{tcp_packet_iter, transport_channel, TransportReceiver, TransportSender};
 
 pub fn run_syn_scan(params: Params) {
-    let iface = get_interface(params.interface);
-    println!("Starting working on interface: {}", iface.name);
     let mut config = Config::default();
     config.channel_type = ChannelType::Layer3(0x800);
 
@@ -23,7 +20,7 @@ pub fn run_syn_scan(params: Params) {
         Err(e) => panic!("Error: {e}"),
     };
 
-    send(tx);
+    send(tx, params.dest_addr);
     let listener = thread::spawn(move || listen(rx));
 
     match listener.join() {
@@ -32,11 +29,11 @@ pub fn run_syn_scan(params: Params) {
     }
 }
 
-fn send(mut tx: TransportSender) {
+fn send(mut tx: TransportSender, dest_addr: Ipv4Addr) {
     let mut buffer = [0u8; 1500];
     get_syn_packet(&mut buffer);
     let packet = MutableTcpPacket::new(&mut buffer).unwrap();
-    match tx.send_to(packet, IpAddr::V4(Ipv4Addr::new(192, 168, 2, 1))) {
+    match tx.send_to(packet, IpAddr::V4(dest_addr)) {
         Err(e) => eprintln!("Error: {e}"),
         Ok(n) => eprintln!("Packet sent: {} bytes", n),
     }
