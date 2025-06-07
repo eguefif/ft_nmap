@@ -5,12 +5,11 @@ use pnet::packet::ip::IpNextHeaderProtocols;
 use std::net::{IpAddr, Ipv4Addr};
 use std::thread;
 
-use pnet::datalink::{ChannelType, Config, DataLinkReceiver, DataLinkSender};
-use pnet::packet::ipv4::Ipv4Packet;
-use pnet::packet::tcp::{MutableTcpPacket, TcpPacket};
+use pnet::datalink::{ChannelType, Config};
+use pnet::packet::tcp::{MutableTcpPacket, TcpFlags, TcpPacket};
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::TransportProtocol::Ipv4;
-use pnet::transport::{transport_channel, TransportSender};
+use pnet::transport::{tcp_packet_iter, transport_channel, TransportReceiver, TransportSender};
 
 pub fn run_syn_scan(params: Params) {
     let iface = get_interface(params.interface);
@@ -43,41 +42,44 @@ fn send(mut tx: TransportSender) {
     }
 }
 
-fn listen(mut rx: Box<dyn DataLinkReceiver + 'static>) {
+fn listen(mut rx: TransportReceiver) {
+    let mut tcp_iter = tcp_packet_iter(&mut rx);
     loop {
-        match rx.next() {
-            Ok(packet) => {
-                if should_dismiss_packet(packet) {
+        match tcp_iter.next() {
+            Ok((packet, addr)) => {
+                if should_dismiss_packet(&packet) {
                     continue;
                 }
-                let ip_packet = Ipv4Packet::new(packet).unwrap();
-                let tcp_packet = TcpPacket::new(packet).unwrap();
-                println!("New packet:");
+                let flags = get_flags(&packet);
                 println!(
-                    "IP Source: {}:{}",
-                    ip_packet.get_source(),
-                    tcp_packet.get_source()
+                    "Receive from {} TCP {} -> {} {}",
+                    addr,
+                    packet.get_source(),
+                    packet.get_destination(),
+                    flags
                 );
-                println!(
-                    "IP Drst: {}:{}",
-                    ip_packet.get_destination(),
-                    tcp_packet.get_destination()
-                );
-                println!();
-                println!("bytes: {:x?}", packet);
             }
             Err(e) => eprintln!("Error while processing packet: {e}"),
         }
     }
 }
 
-fn should_dismiss_packet(packet: &[u8]) -> bool {
-    let ip_packet = Ipv4Packet::new(packet).unwrap();
-    let tcp_packet = TcpPacket::new(packet).unwrap();
-    if ip_packet.get_next_level_protocol() != IpNextHeaderProtocols::Tcp
-        || tcp_packet.get_destination() != PORT_SOURCE
-    {
+fn should_dismiss_packet(packet: &TcpPacket) -> bool {
+    if packet.get_destination() != PORT_SOURCE {
         return true;
     }
     false
+}
+
+fn get_flags(packet: &TcpPacket) -> String {
+    let mut flags = vec!["["];
+    if packet.get_flags() & TcpFlags::SYN == 1 {
+        flags.push("SYN");
+    }
+
+    if packet.get_flags() & TcpFlags::ACK == 1 {
+        flags.push("ACK");
+    }
+    flags.push("]");
+    flags.join(", ")
 }
