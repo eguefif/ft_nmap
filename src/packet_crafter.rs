@@ -1,18 +1,15 @@
 use pnet::packet::ip::IpNextHeaderProtocols;
 use pnet::packet::ipv4::MutableIpv4Packet;
 use pnet::packet::tcp::MutableTcpPacket;
+use pnet::packet::Packet;
 use std::net::Ipv4Addr;
 use std::process;
 
 pub const PORT_SOURCE: u16 = 0xa393;
 
 pub fn get_syn_packet(buffer: &mut [u8]) {
-    let mut ip_packet =
-        MutableIpv4Packet::new(buffer).expect("Impossible to create mutable IP packet");
-    set_ip_packet(&mut ip_packet);
-    let mut tcp_packet =
-        MutableTcpPacket::new(&mut buffer[20..]).expect("Impossible to create mutable TCP packet");
-    set_tcp_packet(&mut tcp_packet);
+    set_ip_packet(buffer);
+    set_tcp_packet(&mut buffer[20..]);
     let mut ip_packet = MutableIpv4Packet::new(buffer).unwrap();
     ip_packet.set_checksum(0);
     let checksum = pnet::packet::ipv4::checksum(&ip_packet.to_immutable());
@@ -20,7 +17,9 @@ pub fn get_syn_packet(buffer: &mut [u8]) {
     println!("buffer {:x?}", &buffer[0..44]);
 }
 
-fn set_ip_packet(packet: &mut MutableIpv4Packet) {
+fn set_ip_packet(buffer: &mut [u8]) {
+    let mut packet =
+        MutableIpv4Packet::new(buffer).expect("Impossible to create mutable IP packet");
     packet.set_version(4);
     packet.set_ttl(0x35);
     packet.set_next_level_protocol(IpNextHeaderProtocols::Tcp);
@@ -32,7 +31,9 @@ fn set_ip_packet(packet: &mut MutableIpv4Packet) {
     packet.set_total_length(20 + 24);
 }
 
-fn set_tcp_packet(packet: &mut MutableTcpPacket) {
+fn set_tcp_packet(buffer: &mut [u8]) {
+    let mut packet =
+        MutableTcpPacket::new(buffer).expect("Impossible to create mutable TCP packet");
     packet.set_source(PORT_SOURCE);
     packet.set_destination(80);
     packet.set_data_offset(6);
@@ -49,7 +50,11 @@ fn set_tcp_packet(packet: &mut MutableTcpPacket) {
     packet.set_options(&[max_segment_opt]);
 
     // FIX: According to wireshark, our checksum is wrong
+    // This is not due to checksum offloading since I calculate
+    // the checksum here. It is not offloaded by the OS to the NIC
     packet.set_checksum(0);
+    println!("tcp: {:x?}", &packet.to_immutable());
+    println!("tcp bytes: {:x?}", &packet.packet()[..24]);
     let checksum = pnet::packet::tcp::ipv4_checksum(
         &packet.to_immutable(),
         &Ipv4Addr::new(192, 168, 2, 23),
