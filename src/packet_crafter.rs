@@ -1,11 +1,11 @@
-use pnet::packet::tcp::MutableTcpPacket;
+use pnet::packet::tcp::{ipv4_checksum, MutableTcpPacket, TcpOption, TcpOptionNumber};
 use rand::prelude::*;
 use std::net::Ipv4Addr;
 
-// TODO: find a way to randomize Port picking.
-// Carefull, it should be an unused port
+// TODO: find a way to randomize Port picking within conflictin
+// with another service
+
 pub const PORT_SOURCE: u16 = 0x2813;
-pub const SEQN: u32 = 0x74331e18;
 
 pub struct SynPacket {
     ip_dest: Ipv4Addr,
@@ -24,7 +24,7 @@ impl SynPacket {
         }
     }
 
-    pub fn get_packet(&mut self, buffer: &mut [u8]) {
+    pub fn build_packet(&mut self, buffer: &mut [u8]) {
         self.set_tcp_packet(&mut buffer[..]);
     }
 
@@ -45,8 +45,8 @@ impl SynPacket {
         packet.set_window(1024);
         self.packet_size = 24;
 
-        let max_segment_opt = pnet::packet::tcp::TcpOption {
-            number: pnet::packet::tcp::TcpOptionNumber(2),
+        let max_segment_opt = TcpOption {
+            number: TcpOptionNumber(2),
             length: vec![04],
             data: vec![0x05, 0xb4],
         };
@@ -54,12 +54,9 @@ impl SynPacket {
 
         println!("Source ip: {:?}", self.ip_source);
         println!("Dest   ip: {:?}", self.ip_dest);
-        let pnet_checksum = pnet::packet::tcp::ipv4_checksum(
-            &packet.to_immutable(),
-            &self.ip_source,
-            &self.ip_dest,
-        );
+        println!("Packet: {:?}", packet);
+        let checksum = ipv4_checksum(&packet.to_immutable(), &self.ip_source, &self.ip_dest);
 
-        packet.set_checksum(pnet_checksum);
+        packet.set_checksum(checksum);
     }
 }

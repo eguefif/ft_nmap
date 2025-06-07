@@ -15,17 +15,10 @@ use pnet::transport::{tcp_packet_iter, transport_channel, TransportReceiver, Tra
 
 pub fn run_syn_scan(params: Params) {
     let source_addr = get_source_addr(&params);
-    let mut config = Config::default();
-    config.channel_type = ChannelType::Layer3(0x800);
-
-    let protocol = Layer4(Ipv4(IpNextHeaderProtocols::Tcp));
-    let (rx, tx) = match transport_channel(4096, protocol) {
-        Ok((tx, rx)) => (rx, tx),
-        Err(e) => panic!("Error: {e}"),
-    };
+    let (rx, tx) = get_transports();
+    let listener = thread::spawn(move || listen(rx));
 
     send(tx, source_addr, params.dest_addr, params.port);
-    let listener = thread::spawn(move || listen(rx));
 
     match listener.join() {
         Ok(_) => println!("Scan is over"),
@@ -43,12 +36,23 @@ fn get_source_addr(params: &Params) -> Ipv4Addr {
     panic!("Error: interface has no IP address");
 }
 
+fn get_transports() -> (TransportReceiver, TransportSender) {
+    let mut config = Config::default();
+    config.channel_type = ChannelType::Layer3(0x800);
+
+    let protocol = Layer4(Ipv4(IpNextHeaderProtocols::Tcp));
+    match transport_channel(4096, protocol) {
+        Ok((tx, rx)) => (rx, tx),
+        Err(e) => panic!("Error: {e}"),
+    }
+}
+
 fn send(mut tx: TransportSender, source_addr: Ipv4Addr, dest_addr: Ipv4Addr, port: u16) {
     let mut buffer = [0u8; 1500];
     let mut syn_packet = SynPacket::new(source_addr, dest_addr, port);
-    syn_packet.get_packet(&mut buffer);
+
+    syn_packet.build_packet(&mut buffer);
     let packet = MutableTcpPacket::new(&mut buffer[..syn_packet.size()]).unwrap();
-    println!("bytes: {:x?}", packet.packet());
     match tx.send_to(packet, IpAddr::V4(dest_addr)) {
         Err(e) => eprintln!("Error: {e}"),
         Ok(n) => eprintln!("Packet sent: {} bytes", n),
