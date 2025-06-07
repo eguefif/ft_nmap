@@ -22,12 +22,12 @@ pub fn run_syn_scan(params: Params) {
     };
 
     send(tx);
-    let listener = thread::spawn(move || listen(rx));
+    //let listener = thread::spawn(move || listen(rx));
 
-    match listener.join() {
-        Ok(_) => println!("Scan is over"),
-        Err(e) => panic!("Error: {e:?}"),
-    }
+    //match listener.join() {
+    //    Ok(_) => println!("Scan is over"),
+    //    Err(e) => panic!("Error: {e:?}"),
+    //}
 }
 
 fn send(mut tx: Box<dyn DataLinkSender>) {
