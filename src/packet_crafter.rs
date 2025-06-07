@@ -5,11 +5,11 @@ pub const PORT_SOURCE: u16 = 0x2813;
 pub const DEST_PORT: u16 = 80;
 pub const SEQN: u32 = 0x74331e18;
 
-pub fn get_syn_packet(buffer: &mut [u8]) {
-    set_tcp_packet(&mut buffer[..]);
+pub fn get_syn_packet(buffer: &mut [u8], source_addr: Ipv4Addr, dest_addr: Ipv4Addr) {
+    set_tcp_packet(&mut buffer[..], source_addr, dest_addr);
 }
 
-fn set_tcp_packet(buffer: &mut [u8]) {
+fn set_tcp_packet(buffer: &mut [u8], source_addr: Ipv4Addr, dest_addr: Ipv4Addr) {
     let mut packet =
         MutableTcpPacket::new(buffer).expect("Impossible to create mutable TCP packet");
     packet.set_source(PORT_SOURCE);
@@ -27,10 +27,8 @@ fn set_tcp_packet(buffer: &mut [u8]) {
     };
     packet.set_options(&[max_segment_opt]);
 
-    let pnet_checksum = pnet::packet::tcp::ipv4_checksum(
-        &packet.to_immutable(),
-        &Ipv4Addr::new(192, 168, 2, 23),
-        &Ipv4Addr::new(192, 168, 2, 1),
-    );
+    let pnet_checksum =
+        pnet::packet::tcp::ipv4_checksum(&packet.to_immutable(), &source_addr, &dest_addr);
+
     packet.set_checksum(pnet_checksum);
 }

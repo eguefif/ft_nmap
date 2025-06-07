@@ -1,5 +1,7 @@
+use crate::interface::get_interface;
 use crate::packet_crafter::{get_syn_packet, PORT_SOURCE};
 use crate::Params;
+use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
 use std::net::{IpAddr, Ipv4Addr};
 use std::thread;
@@ -11,6 +13,7 @@ use pnet::transport::TransportProtocol::Ipv4;
 use pnet::transport::{tcp_packet_iter, transport_channel, TransportReceiver, TransportSender};
 
 pub fn run_syn_scan(params: Params) {
+    let source_addr = get_source_addr(&params);
     let mut config = Config::default();
     config.channel_type = ChannelType::Layer3(0x800);
 
@@ -20,7 +23,7 @@ pub fn run_syn_scan(params: Params) {
         Err(e) => panic!("Error: {e}"),
     };
 
-    send(tx, params.dest_addr);
+    send(tx, source_addr, params.dest_addr);
     let listener = thread::spawn(move || listen(rx));
 
     match listener.join() {
@@ -29,9 +32,19 @@ pub fn run_syn_scan(params: Params) {
     }
 }
 
-fn send(mut tx: TransportSender, dest_addr: Ipv4Addr) {
+fn get_source_addr(params: &Params) -> Ipv4Addr {
+    let interface = get_interface(&params.iname);
+    for network_ip in interface.ips {
+        if let IpNetwork::V4(net_addr) = network_ip {
+            return net_addr.ip();
+        }
+    }
+    panic!("Error: interface has no IP address");
+}
+
+fn send(mut tx: TransportSender, source_addr: Ipv4Addr, dest_addr: Ipv4Addr) {
     let mut buffer = [0u8; 1500];
-    get_syn_packet(&mut buffer);
+    get_syn_packet(&mut buffer, source_addr, dest_addr);
     let packet = MutableTcpPacket::new(&mut buffer).unwrap();
     match tx.send_to(packet, IpAddr::V4(dest_addr)) {
         Err(e) => eprintln!("Error: {e}"),
