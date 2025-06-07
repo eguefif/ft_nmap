@@ -2,12 +2,15 @@ use crate::interface::get_interface;
 use crate::packet_crafter::{get_syn_packet, PORT_SOURCE};
 use crate::Params;
 use pnet::packet::ip::IpNextHeaderProtocols;
+use std::net::{IpAddr, Ipv4Addr};
 use std::thread;
 
-use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::{ChannelType, Config, DataLinkReceiver, DataLinkSender};
 use pnet::packet::ipv4::Ipv4Packet;
-use pnet::packet::tcp::TcpPacket;
+use pnet::packet::tcp::{MutableTcpPacket, TcpPacket};
+use pnet::transport::TransportChannelType::Layer4;
+use pnet::transport::TransportProtocol::Ipv4;
+use pnet::transport::{transport_channel, TransportSender};
 
 pub fn run_syn_scan(params: Params) {
     let iface = get_interface(params.interface);
@@ -15,32 +18,28 @@ pub fn run_syn_scan(params: Params) {
     let mut config = Config::default();
     config.channel_type = ChannelType::Layer3(0x800);
 
-    let (rx, tx) = match pnet::datalink::channel(&iface, config) {
-        Ok(Ethernet(tx, rx)) => (rx, tx),
-        Ok(_) => panic!("Channel format not handled"),
+    let protocol = Layer4(Ipv4(IpNextHeaderProtocols::Tcp));
+    let (rx, tx) = match transport_channel(4096, protocol) {
+        Ok((tx, rx)) => (rx, tx),
         Err(e) => panic!("Error: {e}"),
     };
 
     send(tx);
-    //let listener = thread::spawn(move || listen(rx));
+    let listener = thread::spawn(move || listen(rx));
 
-    //match listener.join() {
-    //    Ok(_) => println!("Scan is over"),
-    //    Err(e) => panic!("Error: {e:?}"),
-    //}
+    match listener.join() {
+        Ok(_) => println!("Scan is over"),
+        Err(e) => panic!("Error: {e:?}"),
+    }
 }
 
-fn send(mut tx: Box<dyn DataLinkSender>) {
+fn send(mut tx: TransportSender) {
     let mut buffer = [0u8; 1500];
     get_syn_packet(&mut buffer);
-    if let Some(res) = tx.send_to(&buffer[0..44], None) {
-        if let Err(e) = res {
-            eprintln!("Error: {e}");
-        } else {
-            eprintln!("Packet sent");
-        }
-    } else {
-        eprintln!("Packet sent");
+    let packet = MutableTcpPacket::new(&mut buffer).unwrap();
+    match tx.send_to(packet, IpAddr::V4(Ipv4Addr::new(192, 168, 2, 1))) {
+        Err(e) => eprintln!("Error: {e}"),
+        Ok(n) => eprintln!("Packet sent: {} bytes", n),
     }
 }
 
