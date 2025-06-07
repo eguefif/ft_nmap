@@ -38,6 +38,14 @@ fn get_params() -> Params {
                 'i' => {
                     params.iname = arg_iter.next().expect("Error: -i an interface");
                 }
+
+                'p' => {
+                    params.port = arg_iter
+                        .next()
+                        .expect("Error: -i an interface")
+                        .parse::<u16>()
+                        .expect("Error: -p wrong port format");
+                }
                 's' => params.scan = Scan::from_char(arg.chars().nth(2)),
                 _ => panic!("Error: unhandled flag"),
             }

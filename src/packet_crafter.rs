@@ -2,35 +2,64 @@ use pnet::packet::tcp::MutableTcpPacket;
 use rand::prelude::*;
 use std::net::Ipv4Addr;
 
+// TODO: find a way to randomize Port picking.
+// Carefull, it should be an unused port
 pub const PORT_SOURCE: u16 = 0x2813;
-pub const DEST_PORT: u16 = 80;
 pub const SEQN: u32 = 0x74331e18;
 
-pub fn get_syn_packet(buffer: &mut [u8], source_addr: Ipv4Addr, dest_addr: Ipv4Addr) {
-    set_tcp_packet(&mut buffer[..], source_addr, dest_addr);
+pub struct SynPacket {
+    ip_dest: Ipv4Addr,
+    ip_source: Ipv4Addr,
+    port: u16,
+    packet_size: usize,
 }
 
-fn set_tcp_packet(buffer: &mut [u8], source_addr: Ipv4Addr, dest_addr: Ipv4Addr) {
-    let mut rng = rand::rng();
-    let mut packet =
-        MutableTcpPacket::new(buffer).expect("Impossible to create mutable TCP packet");
-    packet.set_source(PORT_SOURCE);
-    packet.set_destination(DEST_PORT);
-    packet.set_data_offset(6);
-    packet.set_flags(0b000010);
-    packet.set_sequence(rng.random::<u32>());
-    packet.set_acknowledgement(0);
-    packet.set_window(1024);
+impl SynPacket {
+    pub fn new(ip_dest: Ipv4Addr, ip_source: Ipv4Addr, port: u16) -> Self {
+        Self {
+            ip_dest,
+            ip_source,
+            port,
+            packet_size: 0,
+        }
+    }
 
-    let max_segment_opt = pnet::packet::tcp::TcpOption {
-        number: pnet::packet::tcp::TcpOptionNumber(2),
-        length: vec![04],
-        data: vec![0x05, 0xb4],
-    };
-    packet.set_options(&[max_segment_opt]);
+    pub fn get_packet(&mut self, buffer: &mut [u8]) {
+        self.set_tcp_packet(&mut buffer[..]);
+    }
 
-    let pnet_checksum =
-        pnet::packet::tcp::ipv4_checksum(&packet.to_immutable(), &source_addr, &dest_addr);
+    pub fn size(&mut self) -> usize {
+        return self.packet_size;
+    }
 
-    packet.set_checksum(pnet_checksum);
+    fn set_tcp_packet(&mut self, buffer: &mut [u8]) {
+        let mut rng = rand::rng();
+        let mut packet =
+            MutableTcpPacket::new(buffer).expect("Impossible to create mutable TCP packet");
+        packet.set_source(PORT_SOURCE);
+        packet.set_destination(self.port);
+        packet.set_data_offset(6);
+        packet.set_flags(0b000010);
+        packet.set_sequence(rng.random::<u32>());
+        packet.set_acknowledgement(0);
+        packet.set_window(1024);
+        self.packet_size = 24;
+
+        let max_segment_opt = pnet::packet::tcp::TcpOption {
+            number: pnet::packet::tcp::TcpOptionNumber(2),
+            length: vec![04],
+            data: vec![0x05, 0xb4],
+        };
+        packet.set_options(&[max_segment_opt]);
+
+        println!("Source ip: {:?}", self.ip_source);
+        println!("Dest   ip: {:?}", self.ip_dest);
+        let pnet_checksum = pnet::packet::tcp::ipv4_checksum(
+            &packet.to_immutable(),
+            &self.ip_source,
+            &self.ip_dest,
+        );
+
+        packet.set_checksum(pnet_checksum);
+    }
 }
