@@ -13,10 +13,7 @@ pub const SEQN: u32 = 0x74331e18;
 pub fn get_syn_packet(buffer: &mut [u8]) {
     set_ip_packet(buffer);
     set_tcp_packet(&mut buffer[20..]);
-    let mut ip_packet = MutableIpv4Packet::new(buffer).unwrap();
-    ip_packet.set_checksum(0);
-    let checksum = pnet::packet::ipv4::checksum(&ip_packet.to_immutable());
-    ip_packet.set_checksum(checksum);
+    set_ip_checksum(buffer);
     println!("buffer {:x?}", &buffer[0..44]);
 }
 
@@ -89,4 +86,11 @@ fn set_tcp_packet(buffer: &mut [u8]) {
     println!("tcp: {:x?}", &packet.to_immutable());
     println!("tcp bytes       : {:x?}", &packet.packet()[..24]);
     println!("etherparse bytes: {:x?}", p.to_bytes());
+}
+
+fn set_ip_checksum(buffer: &mut [u8]) {
+    let mut ip_packet = MutableIpv4Packet::new(buffer).unwrap();
+    ip_packet.set_checksum(0);
+    let checksum = pnet::packet::ipv4::checksum(&ip_packet.to_immutable());
+    ip_packet.set_checksum(checksum);
 }
