@@ -25,6 +25,7 @@ impl Scan {
 pub struct Params {
     pub interface: Option<String>,
     pub scan: Scan,
+    pub dest_addr: Option<String>,
 }
 
 impl Params {
@@ -32,6 +33,7 @@ impl Params {
         Self {
             interface: None,
             scan: Scan::REG,
+            dest_addr: None,
         }
     }
 }

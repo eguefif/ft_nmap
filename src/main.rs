@@ -22,6 +22,7 @@ fn get_params() -> Params {
         }
         let (flag, value) = get_param(arg);
         match flag.as_str() {
+            "t" => params.dest_addr = value,
             "i" => params.interface = value,
             "s" => params.scan = Scan::from_char(value),
             _ => panic!("Error: unhandled flag"),
