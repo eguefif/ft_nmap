@@ -15,15 +15,7 @@ use pnet::transport::{tcp_packet_iter, transport_channel, TransportReceiver, Tra
 
 pub fn run_syn_scan(params: Params) {
     let source_addr = get_source_addr(&params);
-    let mut config = Config::default();
-    config.channel_type = ChannelType::Layer3(0x800);
-
-    let protocol = Layer4(Ipv4(IpNextHeaderProtocols::Tcp));
-    let (rx, tx) = match transport_channel(4096, protocol) {
-        Ok((tx, rx)) => (rx, tx),
-        Err(e) => panic!("Error: {e}"),
-    };
-
+    let (rx, tx) = get_transports();
     send(tx, source_addr, params.dest_addr, params.port);
     let listener = thread::spawn(move || listen(rx));
 
@@ -41,6 +33,17 @@ fn get_source_addr(params: &Params) -> Ipv4Addr {
         }
     }
     panic!("Error: interface has no IP address");
+}
+
+fn get_transports() -> (TransportReceiver, TransportSender) {
+    let mut config = Config::default();
+    config.channel_type = ChannelType::Layer3(0x800);
+
+    let protocol = Layer4(Ipv4(IpNextHeaderProtocols::Tcp));
+    match transport_channel(4096, protocol) {
+        Ok((tx, rx)) => (rx, tx),
+        Err(e) => panic!("Error: {e}"),
+    }
 }
 
 fn send(mut tx: TransportSender, source_addr: Ipv4Addr, dest_addr: Ipv4Addr, port: u16) {

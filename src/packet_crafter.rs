@@ -54,12 +54,12 @@ impl SynPacket {
 
         println!("Source ip: {:?}", self.ip_source);
         println!("Dest   ip: {:?}", self.ip_dest);
-        let pnet_checksum = pnet::packet::tcp::ipv4_checksum(
+        let checksum = pnet::packet::tcp::ipv4_checksum(
             &packet.to_immutable(),
             &self.ip_source,
             &self.ip_dest,
         );
 
-        packet.set_checksum(pnet_checksum);
+        packet.set_checksum(checksum);
     }
 }
