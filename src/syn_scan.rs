@@ -16,24 +16,42 @@ const PACKET_SIZE: usize = 24;
 const PORT_LOW: u16 = 10000;
 const PORT_HIGH: u16 = 64000;
 
+struct SendParams {
+    tx: TransportSender,
+    source_addr: Ipv4Addr,
+    source_port: u16,
+    dest_addr: Ipv4Addr,
+    dest_port: u16,
+}
+
 pub fn run_syn_scan(params: Params) {
     let source_addr = get_source_addr(&params);
-    let source_port = get_source_port(source_addr);
-    let (rx, mut tx) = get_transports();
+    let (mut rx, tx) = get_transports();
+    let mut send_params = SendParams {
+        tx,
+        source_addr: source_addr,
+        source_port: get_source_port(source_addr),
+        dest_port: params.port,
+        dest_addr: params.dest_addr,
+    };
 
-    send(
-        &mut tx,
-        source_addr,
-        params.dest_addr,
-        params.port,
-        source_port,
-    );
+    scan_port(&mut rx, &mut send_params, false);
+}
 
-    let port_status = listen_responses(rx, source_port);
-    if let PortStatus::OPEN = port_status {
-        send_rst(tx, source_addr, params.dest_addr, params.port, source_port);
+fn scan_port(rx: &mut TransportReceiver, send_params: &mut SendParams, filtered: bool) {
+    send(send_params, TcpType::SYN);
+
+    let port_status = listen_responses(rx, send_params.source_port);
+    match port_status {
+        PortStatus::OPEN => send(send_params, TcpType::RST),
+        PortStatus::FILTERED => {
+            if !filtered {
+                scan_port(rx, send_params, true);
+            }
+        }
+        PortStatus::CLOSED => {}
     }
-    println!("{}/tcp {}", params.port, port_status);
+    println!("{}/tcp {}", send_params.dest_port, port_status);
 }
 
 fn get_source_addr(params: &Params) -> Ipv4Addr {
@@ -71,43 +89,16 @@ fn get_transports() -> (TransportReceiver, TransportSender) {
     }
 }
 
-fn send(
-    tx: &mut TransportSender,
-    source_addr: Ipv4Addr,
-    dest_addr: Ipv4Addr,
-    port: u16,
-    source_port: u16,
-) {
+fn send(params: &mut SendParams, tcp_type: TcpType) {
     let mut buffer = [0u8; 1500];
-    build_packet(&mut buffer, port, source_port, TcpType::SYN);
+    build_packet(&mut buffer, params.dest_port, params.source_port, tcp_type);
     let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
     packet.set_checksum(ipv4_checksum(
         &packet.to_immutable(),
-        &source_addr,
-        &dest_addr,
+        &params.source_addr,
+        &params.dest_addr,
     ));
-    match tx.send_to(packet, IpAddr::V4(dest_addr)) {
-        Err(e) => eprintln!("Error: {e}"),
-        Ok(n) => eprintln!("Packet sent: {} bytes", n),
-    }
-}
-
-fn send_rst(
-    mut tx: TransportSender,
-    source_addr: Ipv4Addr,
-    dest_addr: Ipv4Addr,
-    port: u16,
-    source_port: u16,
-) {
-    let mut buffer = [0u8; 1500];
-    build_packet(&mut buffer, port, source_port, TcpType::RST);
-    let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
-    packet.set_checksum(ipv4_checksum(
-        &packet.to_immutable(),
-        &source_addr,
-        &dest_addr,
-    ));
-    match tx.send_to(packet, IpAddr::V4(dest_addr)) {
+    match params.tx.send_to(packet, IpAddr::V4(params.dest_addr)) {
         Err(e) => eprintln!("Error: {e}"),
         Ok(n) => eprintln!("Packet sent: {} bytes", n),
     }

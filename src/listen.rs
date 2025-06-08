@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use pnet::{
     packet::tcp::{TcpFlags, TcpPacket},
     transport::{tcp_packet_iter, TransportReceiver},
@@ -9,6 +11,8 @@ pub enum PortStatus {
     FILTERED,
 }
 
+const TIMEOUT_MS: u128 = 500;
+
 impl std::fmt::Display for PortStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -19,8 +23,9 @@ impl std::fmt::Display for PortStatus {
     }
 }
 
-pub fn listen_responses(mut rx: TransportReceiver, port_source: u16) -> PortStatus {
-    let mut tcp_iter = tcp_packet_iter(&mut rx);
+pub fn listen_responses(rx: &mut TransportReceiver, port_source: u16) -> PortStatus {
+    let mut tcp_iter = tcp_packet_iter(rx);
+    let start = Instant::now();
     loop {
         match tcp_iter.next() {
             Ok((packet, addr)) => {
@@ -38,6 +43,9 @@ pub fn listen_responses(mut rx: TransportReceiver, port_source: u16) -> PortStat
                 return get_port_status(&packet);
             }
             Err(e) => eprintln!("Error while processing packet: {e}"),
+        }
+        if start.elapsed().as_millis() > TIMEOUT_MS {
+            return PortStatus::FILTERED;
         }
     }
 }
