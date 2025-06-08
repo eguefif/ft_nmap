@@ -109,8 +109,7 @@ fn send(params: &mut SendParams, tcp_type: TcpType) {
         &params.source_addr,
         &params.dest_addr,
     ));
-    match params.tx.send_to(packet, IpAddr::V4(params.dest_addr)) {
-        Err(e) => eprintln!("Error: {e}"),
-        Ok(n) => eprintln!("Packet sent: {} bytes", n),
+    if let Err(e) = params.tx.send_to(packet, IpAddr::V4(params.dest_addr)) {
+        eprintln!("Error: {e}");
     }
 }

@@ -28,18 +28,19 @@ impl ScanReport {
         if closed > 50 {
             println!("Not shown: {} closed tcp ports (return RST)", closed);
         }
-        println!("PORT     STATE    SERVICE");
+        println!("{:<10}{:<10}{:<10}", "PORT", "STATE", "SERVICE");
         for (port, state) in self.ports.iter() {
+            let port = format!("{}/tcp", port);
             match state {
-                PortStatus::OPEN => println!("{:<6}/tcp{:<10}", port, "open"),
+                PortStatus::OPEN => println!("{:<10}open", port),
                 PortStatus::FILTERED => {
                     if filtered < 50 {
-                        println!("{:<6}/tcp{:<10}", port, "open");
+                        println!("{:<10}filtered", port);
                     }
                 }
                 PortStatus::CLOSED => {
                     if closed < 50 {
-                        println!("{:<6}/tcp{:<10}", port, "open");
+                        println!("{:<10}closed", port);
                     }
                 }
             }
