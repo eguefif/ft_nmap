@@ -1,6 +1,7 @@
 use crate::interface::get_interface;
 use crate::listen::{listen_responses, PortStatus};
 use crate::packet_crafter::{build_packet, TcpType};
+use crate::scan_report::ScanReport;
 use crate::Params;
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
@@ -24,7 +25,7 @@ struct SendParams {
     dest_port: u16,
 }
 
-pub fn run_syn_scan(params: Params) {
+pub fn run_syn_scan(params: Params) -> ScanReport {
     let source_addr = get_source_addr(&params);
     let (mut rx, tx) = get_transports();
     let mut send_params = SendParams {
@@ -35,14 +36,20 @@ pub fn run_syn_scan(params: Params) {
         dest_addr: params.dest_addr,
     };
 
+    let mut report = ScanReport::new();
     for port in params.ports {
-        println!("Scanning port {}", port);
         send_params.dest_port = port;
-        scan_port(&mut rx, &mut send_params, false);
+        let port_status = scan_port(&mut rx, &mut send_params, false);
+        report.ports.push((port, port_status));
     }
+    report
 }
 
-fn scan_port(rx: &mut TransportReceiver, send_params: &mut SendParams, filtered: bool) {
+fn scan_port(
+    rx: &mut TransportReceiver,
+    send_params: &mut SendParams,
+    filtered: bool,
+) -> PortStatus {
     send(send_params, TcpType::SYN);
 
     let port_status = listen_responses(rx, send_params.source_port);
@@ -50,12 +57,12 @@ fn scan_port(rx: &mut TransportReceiver, send_params: &mut SendParams, filtered:
         PortStatus::OPEN => send(send_params, TcpType::RST),
         PortStatus::FILTERED => {
             if !filtered {
-                scan_port(rx, send_params, true);
+                return scan_port(rx, send_params, true);
             }
         }
         PortStatus::CLOSED => {}
     }
-    println!("{}/tcp {}", send_params.dest_port, port_status);
+    port_status
 }
 
 fn get_source_addr(params: &Params) -> Ipv4Addr {

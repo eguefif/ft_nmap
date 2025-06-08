@@ -3,6 +3,7 @@ use std::net::Ipv4Addr;
 pub mod interface;
 pub mod listen;
 pub mod packet_crafter;
+pub mod scan_report;
 pub mod syn_scan;
 
 pub enum Scan {

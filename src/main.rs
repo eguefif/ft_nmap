@@ -17,7 +17,7 @@ fn run(params: Params) {
     }
     println!();
     match params.scan {
-        Scan::SYN => run_syn_scan(params),
+        Scan::SYN => run_syn_scan(params).display(),
         Scan::REG => todo!(),
     }
 }
