@@ -12,7 +12,7 @@ fn main() {
 
 fn run(params: Params) {
     match params.scan {
-        Scan::SYN => run_syn_scan(params),
+        Scan::SYN => run_syn_scan(params).display(),
         Scan::REG => todo!(),
     }
 }
