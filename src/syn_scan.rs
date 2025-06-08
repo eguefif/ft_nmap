@@ -1,17 +1,18 @@
 use crate::interface::get_interface;
-use crate::packet_crafter::{SynPacket, PORT_SOURCE};
+use crate::packet_crafter::{build_packet, PORT_SOURCE};
 use crate::Params;
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
-use pnet::packet::Packet;
 use std::net::{IpAddr, Ipv4Addr};
 use std::thread;
 
 use pnet::datalink::{ChannelType, Config};
-use pnet::packet::tcp::{MutableTcpPacket, TcpFlags, TcpPacket};
+use pnet::packet::tcp::{ipv4_checksum, MutableTcpPacket, TcpFlags, TcpPacket};
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::TransportProtocol::Ipv4;
 use pnet::transport::{tcp_packet_iter, transport_channel, TransportReceiver, TransportSender};
+
+const PACKET_SIZE: usize = 24;
 
 pub fn run_syn_scan(params: Params) {
     let source_addr = get_source_addr(&params);
@@ -49,10 +50,13 @@ fn get_transports() -> (TransportReceiver, TransportSender) {
 
 fn send(mut tx: TransportSender, source_addr: Ipv4Addr, dest_addr: Ipv4Addr, port: u16) {
     let mut buffer = [0u8; 1500];
-    let mut syn_packet = SynPacket::new(source_addr, dest_addr, port);
-
-    syn_packet.build_packet(&mut buffer);
-    let packet = MutableTcpPacket::new(&mut buffer[..syn_packet.size()]).unwrap();
+    build_packet(&mut buffer, port);
+    let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
+    packet.set_checksum(ipv4_checksum(
+        &packet.to_immutable(),
+        &source_addr,
+        &dest_addr,
+    ));
     match tx.send_to(packet, IpAddr::V4(dest_addr)) {
         Err(e) => eprintln!("Error: {e}"),
         Ok(n) => eprintln!("Packet sent: {} bytes", n),
