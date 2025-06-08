@@ -1,4 +1,5 @@
 use crate::interface::get_interface;
+use crate::listen::listen_responses;
 use crate::packet_crafter::build_packet;
 use crate::Params;
 use pnet::ipnetwork::IpNetwork;
@@ -7,10 +8,10 @@ use std::net::{IpAddr, Ipv4Addr, TcpListener};
 use std::thread;
 
 use pnet::datalink::{ChannelType, Config};
-use pnet::packet::tcp::{ipv4_checksum, MutableTcpPacket, TcpFlags, TcpPacket};
+use pnet::packet::tcp::{ipv4_checksum, MutableTcpPacket};
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::TransportProtocol::Ipv4;
-use pnet::transport::{tcp_packet_iter, transport_channel, TransportReceiver, TransportSender};
+use pnet::transport::{transport_channel, TransportReceiver, TransportSender};
 
 const PACKET_SIZE: usize = 24;
 const PORT_LOW: u16 = 10000;
@@ -20,7 +21,7 @@ pub fn run_syn_scan(params: Params) {
     let source_addr = get_source_addr(&params);
     let source_port = get_source_port(source_addr);
     let (rx, tx) = get_transports();
-    let listener = thread::spawn(move || listen(rx, source_port));
+    let listener = thread::spawn(move || listen_responses(rx, source_port));
 
     send(tx, source_addr, params.dest_addr, params.port, source_port);
 
@@ -84,46 +85,4 @@ fn send(
         Err(e) => eprintln!("Error: {e}"),
         Ok(n) => eprintln!("Packet sent: {} bytes", n),
     }
-}
-
-fn listen(mut rx: TransportReceiver, port_source: u16) {
-    let mut tcp_iter = tcp_packet_iter(&mut rx);
-    loop {
-        match tcp_iter.next() {
-            Ok((packet, addr)) => {
-                if should_dismiss_packet(&packet, port_source) {
-                    continue;
-                }
-                let flags = get_flags(&packet);
-                println!(
-                    "Receive from {} TCP {} -> {} {}",
-                    addr,
-                    packet.get_source(),
-                    packet.get_destination(),
-                    flags
-                );
-            }
-            Err(e) => eprintln!("Error while processing packet: {e}"),
-        }
-    }
-}
-
-fn should_dismiss_packet(packet: &TcpPacket, port_source: u16) -> bool {
-    if packet.get_destination() != port_source {
-        return true;
-    }
-    false
-}
-
-fn get_flags(packet: &TcpPacket) -> String {
-    let mut flags = vec!["["];
-    if packet.get_flags() & TcpFlags::SYN == 1 {
-        flags.push("SYN");
-    }
-
-    if packet.get_flags() & TcpFlags::ACK == 1 {
-        flags.push("ACK");
-    }
-    flags.push("]");
-    flags.join(", ")
 }
