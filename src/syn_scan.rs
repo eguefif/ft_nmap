@@ -26,7 +26,7 @@ struct SendParams {
 
 pub fn run_syn_scan(params: Params) {
     let source_addr = get_source_addr(&params);
-    let (rx, tx) = get_transports();
+    let (mut rx, tx) = get_transports();
     let mut send_params = SendParams {
         tx,
         source_addr: source_addr,
@@ -35,13 +35,23 @@ pub fn run_syn_scan(params: Params) {
         dest_addr: params.dest_addr,
     };
 
-    send(&mut send_params, TcpType::SYN);
+    scan_port(&mut rx, &mut send_params, false);
+}
+
+fn scan_port(rx: &mut TransportReceiver, send_params: &mut SendParams, filtered: bool) {
+    send(send_params, TcpType::SYN);
 
     let port_status = listen_responses(rx, send_params.source_port);
-    if let PortStatus::OPEN = port_status {
-        send(&mut send_params, TcpType::RST);
+    match port_status {
+        PortStatus::OPEN => send(send_params, TcpType::RST),
+        PortStatus::FILTERED => {
+            if !filtered {
+                scan_port(rx, send_params, true);
+            }
+        }
+        PortStatus::CLOSED => {}
     }
-    println!("{}/tcp {}", params.port, port_status);
+    println!("{}/tcp {}", send_params.dest_port, port_status);
 }
 
 fn get_source_addr(params: &Params) -> Ipv4Addr {
