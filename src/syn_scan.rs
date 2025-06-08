@@ -5,7 +5,6 @@ use crate::Params;
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
 use std::net::{IpAddr, Ipv4Addr, TcpListener};
-use std::thread;
 
 use pnet::datalink::{ChannelType, Config};
 use pnet::packet::tcp::{ipv4_checksum, MutableTcpPacket};
@@ -21,14 +20,11 @@ pub fn run_syn_scan(params: Params) {
     let source_addr = get_source_addr(&params);
     let source_port = get_source_port(source_addr);
     let (rx, tx) = get_transports();
-    let listener = thread::spawn(move || listen_responses(rx, source_port));
 
     send(tx, source_addr, params.dest_addr, params.port, source_port);
 
-    match listener.join() {
-        Ok(_) => println!("Scan is over"),
-        Err(e) => panic!("Error: {e:?}"),
-    }
+    let port_status = listen_responses(rx, source_port);
+    println!("{}/tcp {}", params.port, port_status);
 }
 
 fn get_source_addr(params: &Params) -> Ipv4Addr {
