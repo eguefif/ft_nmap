@@ -31,7 +31,7 @@ pub fn run_syn_scan(params: Params) {
         tx,
         source_addr: source_addr,
         source_port: get_source_port(source_addr),
-        dest_port: params.port,
+        dest_port: params.ports[0],
         dest_addr: params.dest_addr,
     };
 

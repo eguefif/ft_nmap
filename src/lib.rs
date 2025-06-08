@@ -28,7 +28,7 @@ pub struct Params {
     pub iname: String,
     pub scan: Scan,
     pub dest_addr: Ipv4Addr,
-    pub port: u16,
+    pub ports: Vec<u16>,
 }
 
 impl Params {
@@ -37,7 +37,7 @@ impl Params {
             iname: "wlo1".to_string(),
             scan: Scan::REG,
             dest_addr: Ipv4Addr::new(127, 0, 0, 1),
-            port: 0,
+            ports: Vec::new(),
         }
     }
 }

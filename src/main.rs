@@ -11,6 +11,11 @@ fn main() {
 }
 
 fn run(params: Params) {
+    print!("scanning: ");
+    for port in &params.ports {
+        print!(" {},", port);
+    }
+    println!();
     match params.scan {
         Scan::SYN => run_syn_scan(params),
         Scan::REG => todo!(),
@@ -40,11 +45,8 @@ fn get_params() -> Params {
                 }
 
                 'p' => {
-                    params.port = arg_iter
-                        .next()
-                        .expect("Error: -i an interface")
-                        .parse::<u16>()
-                        .expect("Error: -p wrong port format");
+                    let ports_value = arg_iter.next().expect("Error: -p needs ports arguments");
+                    params.ports = get_ports(ports_value);
                 }
                 's' => params.scan = Scan::from_char(arg.chars().nth(2)),
                 _ => panic!("Error: unhandled flag"),
@@ -61,4 +63,33 @@ fn get_flag(arg: &str) -> char {
         panic!("Error: missing flag for -");
     }
     arg.chars().nth(1).unwrap()
+}
+
+fn get_ports(ports_param: String) -> Vec<u16> {
+    let mut ports = Vec::new();
+    let splits = ports_param.split(',');
+    for split in splits {
+        if split.contains('-') {
+            let mut range_splits = split.split('-');
+            let start = range_splits
+                .next()
+                .expect("Error: in -p, port range need a start")
+                .parse::<u16>()
+                .expect("Error: in -p, port range start is not a valid number");
+            let end = range_splits
+                .next()
+                .expect("Error: in -p, port range need an end")
+                .parse::<u16>()
+                .expect("Error: in -p, port range start is not a valid number");
+            for i in start..end {
+                ports.push(i);
+            }
+        } else {
+            let port = split
+                .parse::<u16>()
+                .expect("Error: in -p, port i not a valid number");
+            ports.push(port);
+        }
+    }
+    ports
 }

@@ -1,3 +1,3 @@
 #/bin/bash
 cargo build
-sudo ./target/debug/ft_nmap -sS -t 192.168.2.1 -p 80
+sudo ./target/debug/ft_nmap -sS -t 192.168.2.1 -p 80-100, 123, 144
