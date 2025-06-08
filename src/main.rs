@@ -80,14 +80,14 @@ fn get_ports(ports_param: String) -> Vec<u16> {
                 .next()
                 .expect("Error: in -p, port range need an end")
                 .parse::<u16>()
-                .expect("Error: in -p, port range start is not a valid number");
+                .expect("Error: in -p, port range end is not a valid number");
             for i in start..end {
                 ports.push(i);
             }
         } else {
             let port = split
                 .parse::<u16>()
-                .expect("Error: in -p, port i not a valid number");
+                .expect("Error: in -p, port is not a valid number");
             ports.push(port);
         }
     }
