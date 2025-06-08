@@ -31,11 +31,15 @@ pub fn run_syn_scan(params: Params) {
         tx,
         source_addr: source_addr,
         source_port: get_source_port(source_addr),
-        dest_port: params.port,
+        dest_port: 0,
         dest_addr: params.dest_addr,
     };
 
-    scan_port(&mut rx, &mut send_params, false);
+    for port in params.ports {
+        println!("Scanning port {}", port);
+        send_params.dest_port = port;
+        scan_port(&mut rx, &mut send_params, false);
+    }
 }
 
 fn scan_port(rx: &mut TransportReceiver, send_params: &mut SendParams, filtered: bool) {
@@ -98,8 +102,7 @@ fn send(params: &mut SendParams, tcp_type: TcpType) {
         &params.source_addr,
         &params.dest_addr,
     ));
-    match params.tx.send_to(packet, IpAddr::V4(params.dest_addr)) {
-        Err(e) => eprintln!("Error: {e}"),
-        Ok(n) => eprintln!("Packet sent: {} bytes", n),
+    if let Err(e) = params.tx.send_to(packet, IpAddr::V4(params.dest_addr)) {
+        eprintln!("Error: {e}");
     }
 }
