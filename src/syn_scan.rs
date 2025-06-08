@@ -1,6 +1,6 @@
 use crate::interface::get_interface;
-use crate::listen::listen_responses;
-use crate::packet_crafter::build_packet;
+use crate::listen::{listen_responses, PortStatus};
+use crate::packet_crafter::{build_packet, TcpType};
 use crate::Params;
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
@@ -19,11 +19,20 @@ const PORT_HIGH: u16 = 64000;
 pub fn run_syn_scan(params: Params) {
     let source_addr = get_source_addr(&params);
     let source_port = get_source_port(source_addr);
-    let (rx, tx) = get_transports();
+    let (rx, mut tx) = get_transports();
 
-    send(tx, source_addr, params.dest_addr, params.port, source_port);
+    send(
+        &mut tx,
+        source_addr,
+        params.dest_addr,
+        params.port,
+        source_port,
+    );
 
     let port_status = listen_responses(rx, source_port);
+    if let PortStatus::OPEN = port_status {
+        send_rst(tx, source_addr, params.dest_addr, params.port, source_port);
+    }
     println!("{}/tcp {}", params.port, port_status);
 }
 
@@ -63,6 +72,27 @@ fn get_transports() -> (TransportReceiver, TransportSender) {
 }
 
 fn send(
+    tx: &mut TransportSender,
+    source_addr: Ipv4Addr,
+    dest_addr: Ipv4Addr,
+    port: u16,
+    source_port: u16,
+) {
+    let mut buffer = [0u8; 1500];
+    build_packet(&mut buffer, port, source_port, TcpType::SYN);
+    let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
+    packet.set_checksum(ipv4_checksum(
+        &packet.to_immutable(),
+        &source_addr,
+        &dest_addr,
+    ));
+    match tx.send_to(packet, IpAddr::V4(dest_addr)) {
+        Err(e) => eprintln!("Error: {e}"),
+        Ok(n) => eprintln!("Packet sent: {} bytes", n),
+    }
+}
+
+fn send_rst(
     mut tx: TransportSender,
     source_addr: Ipv4Addr,
     dest_addr: Ipv4Addr,
@@ -70,7 +100,7 @@ fn send(
     source_port: u16,
 ) {
     let mut buffer = [0u8; 1500];
-    build_packet(&mut buffer, port, source_port);
+    build_packet(&mut buffer, port, source_port, TcpType::RST);
     let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
     packet.set_checksum(ipv4_checksum(
         &packet.to_immutable(),
