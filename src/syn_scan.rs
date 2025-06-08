@@ -1,9 +1,9 @@
 use crate::interface::get_interface;
-use crate::packet_crafter::{build_packet, PORT_SOURCE};
+use crate::packet_crafter::build_packet;
 use crate::Params;
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, TcpListener};
 use std::thread;
 
 use pnet::datalink::{ChannelType, Config};
@@ -13,13 +13,16 @@ use pnet::transport::TransportProtocol::Ipv4;
 use pnet::transport::{tcp_packet_iter, transport_channel, TransportReceiver, TransportSender};
 
 const PACKET_SIZE: usize = 24;
+const PORT_LOW: u16 = 10000;
+const PORT_HIGH: u16 = 64000;
 
 pub fn run_syn_scan(params: Params) {
     let source_addr = get_source_addr(&params);
+    let source_port = get_source_port(source_addr);
     let (rx, tx) = get_transports();
-    let listener = thread::spawn(move || listen(rx));
+    let listener = thread::spawn(move || listen(rx, source_port));
 
-    send(tx, source_addr, params.dest_addr, params.port);
+    send(tx, source_addr, params.dest_addr, params.port, source_port);
 
     match listener.join() {
         Ok(_) => println!("Scan is over"),
@@ -37,6 +40,20 @@ fn get_source_addr(params: &Params) -> Ipv4Addr {
     panic!("Error: interface has no IP address");
 }
 
+fn get_source_port(source_addr: Ipv4Addr) -> u16 {
+    let mut i = 0;
+    loop {
+        let port = rand::random_range(PORT_LOW..PORT_HIGH);
+        if let Ok(_) = TcpListener::bind((source_addr.to_string(), port)) {
+            return port;
+        }
+        i += 1;
+        if i == 100 {
+            panic!("Error: Impossible to find an available port after 100 tries");
+        }
+    }
+}
+
 fn get_transports() -> (TransportReceiver, TransportSender) {
     let mut config = Config::default();
     config.channel_type = ChannelType::Layer3(0x800);
@@ -48,9 +65,15 @@ fn get_transports() -> (TransportReceiver, TransportSender) {
     }
 }
 
-fn send(mut tx: TransportSender, source_addr: Ipv4Addr, dest_addr: Ipv4Addr, port: u16) {
+fn send(
+    mut tx: TransportSender,
+    source_addr: Ipv4Addr,
+    dest_addr: Ipv4Addr,
+    port: u16,
+    source_port: u16,
+) {
     let mut buffer = [0u8; 1500];
-    build_packet(&mut buffer, port);
+    build_packet(&mut buffer, port, source_port);
     let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
     packet.set_checksum(ipv4_checksum(
         &packet.to_immutable(),
@@ -63,12 +86,12 @@ fn send(mut tx: TransportSender, source_addr: Ipv4Addr, dest_addr: Ipv4Addr, por
     }
 }
 
-fn listen(mut rx: TransportReceiver) {
+fn listen(mut rx: TransportReceiver, port_source: u16) {
     let mut tcp_iter = tcp_packet_iter(&mut rx);
     loop {
         match tcp_iter.next() {
             Ok((packet, addr)) => {
-                if should_dismiss_packet(&packet) {
+                if should_dismiss_packet(&packet, port_source) {
                     continue;
                 }
                 let flags = get_flags(&packet);
@@ -85,8 +108,8 @@ fn listen(mut rx: TransportReceiver) {
     }
 }
 
-fn should_dismiss_packet(packet: &TcpPacket) -> bool {
-    if packet.get_destination() != PORT_SOURCE {
+fn should_dismiss_packet(packet: &TcpPacket, port_source: u16) -> bool {
+    if packet.get_destination() != port_source {
         return true;
     }
     false

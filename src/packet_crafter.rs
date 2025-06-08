@@ -1,16 +1,11 @@
 use pnet::packet::tcp::{MutableTcpPacket, TcpOption, TcpOptionNumber};
 use rand::prelude::*;
 
-// TODO: find a way to randomize Port picking within conflictin
-// with another service
-
-pub const PORT_SOURCE: u16 = 0x2813;
-
-pub fn build_packet(buffer: &mut [u8], port: u16) {
+pub fn build_packet(buffer: &mut [u8], port: u16, source_port: u16) {
     let mut rng = rand::rng();
     let mut packet =
         MutableTcpPacket::new(buffer).expect("Impossible to create mutable TCP packet");
-    packet.set_source(PORT_SOURCE);
+    packet.set_source(source_port);
     packet.set_destination(port);
     packet.set_data_offset(6);
     packet.set_flags(0b000010);
