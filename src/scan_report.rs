@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use crate::listen::PortStatus;
 
@@ -7,6 +7,7 @@ pub struct ScanReport {
     pub udp_services: HashMap<u16, String>,
     pub tcp_services: HashMap<u16, String>,
     pub sctp_services: HashMap<u16, String>,
+    pub duration: Duration,
 }
 
 impl ScanReport {
@@ -37,6 +38,7 @@ impl ScanReport {
             tcp_services,
             udp_services,
             sctp_services,
+            duration: Duration::default(),
         }
     }
 
@@ -77,6 +79,11 @@ impl ScanReport {
                 }
             }
         }
+        println!(
+            "ft_nmap done: 1 IP address (1 host up) scanned in {}.{}s",
+            self.duration.as_secs(),
+            self.duration.as_millis(),
+        );
     }
 
     fn get_service(&self, port: &u16) -> &str {

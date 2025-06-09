@@ -3,6 +3,7 @@ use ft_nmap::{Params, Scan};
 use std::env;
 use std::net::Ipv4Addr;
 use std::str::FromStr;
+use std::time::Instant;
 
 fn main() {
     println!("Starting ft_nmap");
@@ -11,10 +12,13 @@ fn main() {
 }
 
 fn run(params: Params) {
-    match params.scan {
-        Scan::SYN => run_syn_scan(params).display(),
+    let start = Instant::now();
+    let mut scan_report = match params.scan {
+        Scan::SYN => run_syn_scan(params),
         Scan::REG => todo!(),
-    }
+    };
+    scan_report.duration = start.elapsed();
+    scan_report.display()
 }
 
 fn get_params() -> Params {
