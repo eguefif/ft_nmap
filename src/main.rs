@@ -1,6 +1,6 @@
 use chrono::{Datelike, Local, Timelike};
 use ft_nmap::syn_scan::run_syn_scan;
-use ft_nmap::{Params, Scan};
+use ft_nmap::{Scan, ScanType};
 use std::env;
 use std::net::Ipv4Addr;
 use std::str::FromStr;
@@ -8,22 +8,22 @@ use std::time::Instant;
 
 fn main() {
     println!("Starting ft_nmap at {}", get_time_now());
-    let params = get_params();
-    run(params);
+    let mut scan = handle_params();
+    run_scan(&mut scan);
 }
 
-fn run(params: Params) {
+fn run_scan(scan: &mut Scan) {
     let start = Instant::now();
-    let mut scan_report = match params.scan {
-        Scan::SYN => run_syn_scan(params),
-        Scan::REG => todo!(),
+    match scan.scan {
+        ScanType::SYN => run_syn_scan(scan),
+        ScanType::REG => todo!(),
     };
-    scan_report.duration = start.elapsed();
-    scan_report.display()
+    scan.report.duration = start.elapsed();
+    scan.report.display()
 }
 
-fn get_params() -> Params {
-    let mut params = Params::default();
+fn handle_params() -> Scan {
+    let mut scan = Scan::default();
     let mut arg_iter = env::args();
     loop {
         if let Some(arg) = arg_iter.next() {
@@ -36,26 +36,26 @@ fn get_params() -> Params {
                     let addr = arg_iter
                         .next()
                         .expect("Error: -t needs a target IP address");
-                    params.dest_addr = Ipv4Addr::from_str(&addr).expect(
+                    scan.dest_addr = Ipv4Addr::from_str(&addr).expect(
                         "Error: impossible to create ipv4Addr object from given target IP address",
                     );
                 }
                 'i' => {
-                    params.iname = arg_iter.next().expect("Error: -i an interface");
+                    scan.iname = arg_iter.next().expect("Error: -i an interface");
                 }
 
                 'p' => {
                     let ports_value = arg_iter.next().expect("Error: -p needs ports arguments");
-                    params.ports = get_ports(ports_value);
+                    scan.ports = get_ports(ports_value);
                 }
-                's' => params.scan = Scan::from_char(arg.chars().nth(2)),
+                's' => scan.scan = ScanType::from_char(arg.chars().nth(2)),
                 _ => panic!("Error: unhandled flag"),
             }
         } else {
             break;
         }
     }
-    params
+    scan
 }
 
 fn get_flag(arg: &str) -> char {
