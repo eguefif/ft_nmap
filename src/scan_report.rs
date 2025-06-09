@@ -1,12 +1,41 @@
+use std::collections::HashMap;
+
 use crate::listen::PortStatus;
 
 pub struct ScanReport {
     pub ports: Vec<(u16, PortStatus)>,
+    pub udp_services: HashMap<u16, String>,
+    pub tcp_services: HashMap<u16, String>,
 }
 
 impl ScanReport {
     pub fn new() -> Self {
-        Self { ports: vec![] }
+        let mut reader = csv::ReaderBuilder::new()
+            .delimiter(b',')
+            .from_path("./services.csv")
+            .expect("Error: Impossible to open services.csv file");
+        let mut tcp_services = HashMap::new();
+        let mut udp_services = HashMap::new();
+        for row in reader.records() {
+            let record = row.expect("Error: row error in services.csv file");
+            let port = record[0]
+                .parse::<u16>()
+                .expect("Error: services.csv port not a number");
+            let service = &record[1];
+            let protocol = &record[2];
+            if protocol == "tcp" {
+                tcp_services.insert(port, service.to_string());
+            } else if protocol == "udp" {
+                udp_services.insert(port, service.to_string());
+            } else {
+                eprintln!("Services.csv: transport protocol unhandleld: {}", protocol);
+            }
+        }
+        Self {
+            ports: vec![],
+            tcp_services,
+            udp_services,
+        }
     }
 
     pub fn display(&self) {
