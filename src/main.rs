@@ -11,11 +11,6 @@ fn main() {
 }
 
 fn run(params: Params) {
-    print!("scanning: ");
-    for port in &params.ports {
-        print!(" {},", port);
-    }
-    println!();
     match params.scan {
         Scan::SYN => run_syn_scan(params).display(),
         Scan::REG => todo!(),
