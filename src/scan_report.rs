@@ -1,12 +1,43 @@
+use std::collections::HashMap;
+
 use crate::listen::PortStatus;
 
 pub struct ScanReport {
     pub ports: Vec<(u16, PortStatus)>,
+    pub udp_services: HashMap<u16, String>,
+    pub tcp_services: HashMap<u16, String>,
+    pub sctp_services: HashMap<u16, String>,
 }
 
 impl ScanReport {
     pub fn new() -> Self {
-        Self { ports: vec![] }
+        let mut reader = csv::ReaderBuilder::new()
+            .delimiter(b',')
+            .from_path("./services.csv")
+            .expect("Error: Impossible to open services.csv file");
+        let mut tcp_services = HashMap::new();
+        let mut udp_services = HashMap::new();
+        let mut sctp_services = HashMap::new();
+        for row in reader.records() {
+            let record = row.expect("Error: row error in services.csv file");
+            if let Ok(port) = record[0].parse::<u16>() {
+                let service = &record[1];
+                let protocol = &record[2];
+                if protocol == "tcp" {
+                    tcp_services.insert(port, service.to_string());
+                } else if protocol == "udp" {
+                    udp_services.insert(port, service.to_string());
+                } else if protocol == "sctp" {
+                    sctp_services.insert(port, service.to_string());
+                }
+            }
+        }
+        Self {
+            ports: vec![],
+            tcp_services,
+            udp_services,
+            sctp_services,
+        }
     }
 
     pub fn display(&self) {
@@ -30,20 +61,27 @@ impl ScanReport {
         }
         println!("{:<10}{:<10}{:<10}", "PORT", "STATE", "SERVICE");
         for (port, state) in self.ports.iter() {
+            let service = self.get_service(port);
             let port = format!("{}/tcp", port);
             match state {
-                PortStatus::OPEN => println!("{:<10}open", port),
+                PortStatus::OPEN => println!("{:<10}{:<10}{:<10}", port, "open", service),
                 PortStatus::FILTERED => {
                     if filtered < 50 {
-                        println!("{:<10}filtered", port);
+                        println!("{:<10}{:<10}{:<10}", port, "filtered", service);
                     }
                 }
                 PortStatus::CLOSED => {
                     if closed < 50 {
-                        println!("{:<10}closed", port);
+                        println!("{:<10}{:<10}{:<10}", port, "closed", service);
                     }
                 }
             }
         }
+    }
+
+    fn get_service(&self, port: &u16) -> &str {
+        self.tcp_services
+            .get(port)
+            .expect("Error: while looking for service, port does not exist")
     }
 }
