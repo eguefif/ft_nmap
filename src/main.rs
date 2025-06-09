@@ -1,3 +1,4 @@
+use chrono::{Datelike, Local, Timelike};
 use ft_nmap::syn_scan::run_syn_scan;
 use ft_nmap::{Params, Scan};
 use std::env;
@@ -6,7 +7,7 @@ use std::str::FromStr;
 use std::time::Instant;
 
 fn main() {
-    println!("Starting ft_nmap");
+    println!("Starting ft_nmap at {}", get_time_now());
     let params = get_params();
     run(params);
 }
@@ -91,4 +92,17 @@ fn get_ports(ports_param: String) -> Vec<u16> {
         }
     }
     ports
+}
+
+fn get_time_now() -> String {
+    let now = Local::now().fixed_offset();
+    format!(
+        "{}-{}-{} {}:{} {}",
+        now.year(),
+        now.month(),
+        now.day(),
+        now.hour(),
+        now.minute(),
+        now.timezone()
+    )
 }
