@@ -471,7 +471,6 @@ port,service,protocol
 223,cdc,udp
 224,masqdialer,tcp
 224,masqdialer,udp
-225-241,,
 242,direct,tcp
 242,direct,udp
 243,sur-meas,tcp
@@ -488,7 +487,6 @@ port,service,protocol
 247,subntbcst_tftp,udp
 248,bhfhs,tcp
 248,bhfhs,udp
-249-255,,
 256,rap,tcp
 256,rap,udp
 257,set,tcp
@@ -520,7 +518,6 @@ port,service,protocol
 270,gist,udp
 271,pt-tls,tcp
 271,,udp
-272-279,,
 280,http-mgmt,tcp
 280,http-mgmt,udp
 281,personal-link,tcp
@@ -536,7 +533,6 @@ port,service,protocol
 286,fxp,udp
 287,k-block,tcp
 287,k-block,udp
-288-307,,
 308,novastorbakcup,tcp
 308,novastorbakcup,udp
 309,entrusttime,tcp
@@ -571,10 +567,8 @@ port,service,protocol
 323,,udp
 324,rpki-rtr-tls,tcp
 324,,udp
-325-332,,
 333,texar,tcp
 333,texar,udp
-334-343,,
 344,pdap,tcp
 344,pdap,udp
 345,pawserv,tcp
@@ -1336,14 +1330,12 @@ port,service,protocol
 715,iris-lwz,tcp
 715,iris-lwz,udp
 716,pana,udp
-717-728,,
 729,netviewdm1,tcp
 729,netviewdm1,udp
 730,netviewdm2,tcp
 730,netviewdm2,udp
 731,netviewdm3,tcp
 731,netviewdm3,udp
-732-740,,
 741,netgw,tcp
 741,netgw,udp
 742,netrcs,tcp
@@ -1351,7 +1343,6 @@ port,service,protocol
 743,,
 744,flexlm,tcp
 744,flexlm,udp
-745-746,,
 747,fujitsu-dev,tcp
 747,fujitsu-dev,udp
 748,ris-cm,tcp
@@ -1369,7 +1360,6 @@ port,service,protocol
 753,rrh,udp
 754,tell,tcp
 754,tell,udp
-755-757,,
 758,nlogin,tcp
 758,nlogin,udp
 759,con,tcp
@@ -1410,13 +1400,10 @@ port,service,protocol
 776,wpages,udp
 777,multiling-http,tcp
 777,multiling-http,udp
-778-779,,
 780,wpgs,tcp
 780,wpgs,udp
-781-785,,
 786,,
 787,,
-788-799,,
 800,mdbs-daemon,tcp
 800,mdbs_daemon,tcp
 800,mdbs-daemon,udp
@@ -1425,10 +1412,8 @@ port,service,protocol
 801,device,udp
 802,mbap-s,tcp
 802,mbap-s,udp
-803-809,,
 810,fcp-udp,tcp
 810,fcp-udp,udp
-811-827,,
 828,itm-mcell-s,tcp
 828,itm-mcell-s,udp
 829,pkix-3-ca-ra,tcp
@@ -1441,7 +1426,6 @@ port,service,protocol
 832,netconfsoaphttp,udp
 833,netconfsoapbeep,tcp
 833,netconfsoapbeep,udp
-834-846,,
 847,dhcp-failover2,tcp
 847,dhcp-failover2,udp
 848,gdoi,tcp
