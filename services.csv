@@ -176,7 +176,7 @@ port,service,protocol
 80,www-http,tcp
 80,www-http,udp
 80,http,sctp
-81,,
+81,hosts2-ns,tcp
 82,xfer,tcp
 82,xfer,udp
 83,mit-ml-dev,tcp

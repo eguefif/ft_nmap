@@ -80,15 +80,16 @@ impl ScanReport {
             }
         }
         println!(
-            "ft_nmap done: 1 IP address (1 host up) scanned in {}.{}s",
-            self.duration.as_secs(),
-            self.duration.as_millis(),
+            "ft_nmap done: 1 IP address (1 host up) scanned in {:.2}s",
+            (self.duration.as_millis() as f64 / 1000 as f64)
         );
     }
 
     fn get_service(&self, port: &u16) -> &str {
-        self.tcp_services
-            .get(port)
-            .expect("Error: while looking for service, port does not exist")
+        match self.tcp_services.get(port) {
+            Some(service) => return service,
+            None => {}
+        }
+        ""
     }
 }
