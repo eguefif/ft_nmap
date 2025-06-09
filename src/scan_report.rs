@@ -80,8 +80,10 @@ impl ScanReport {
     }
 
     fn get_service(&self, port: &u16) -> &str {
-        self.tcp_services
-            .get(port)
-            .expect("Error: while looking for service, port does not exist")
+        match self.tcp_services.get(port) {
+            Some(service) => return service,
+            None => {}
+        }
+        ""
     }
 }
