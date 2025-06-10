@@ -1,4 +1,5 @@
 use chrono::{Datelike, Local, Timelike};
+use ft_nmap::dns_lookup::{dns_lookup_host, dns_lookup_ip};
 use ft_nmap::pre_scan::run_prescan;
 use ft_nmap::syn_scan::run_syn_scan;
 use ft_nmap::{Scan, ScanType};
@@ -39,9 +40,16 @@ fn handle_params() -> Scan {
                     let addr = arg_iter
                         .next()
                         .expect("Error: -t needs a target IP address");
-                    scan.dest_addr = Ipv4Addr::from_str(&addr).expect(
-                        "Error: impossible to create ipv4Addr object from given target IP address",
-                    );
+                    if let Ok(ip_addr) = Ipv4Addr::from_str(&addr) {
+                        scan.dest_addr = ip_addr;
+                        dns_lookup_ip(&mut scan);
+                    } else {
+                        scan.dest_host = addr;
+                        dns_lookup_host(&mut scan);
+                    }
+                    scan.report.addr = scan.dest_addr.clone();
+                    scan.report.addr_v6 = scan.dest_addr_v6.clone();
+                    scan.report.hostname = scan.dest_host.clone();
                 }
                 'i' => {
                     scan.iname = arg_iter.next().expect("Error: -i an interface");

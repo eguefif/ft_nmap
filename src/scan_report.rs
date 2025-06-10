@@ -1,4 +1,8 @@
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::HashMap,
+    net::{Ipv4Addr, Ipv6Addr},
+    time::Duration,
+};
 
 use crate::listen::PortStatus;
 
@@ -10,6 +14,9 @@ pub struct ScanReport {
     pub duration: Duration,
     pub latency: Duration,
     pub down: bool,
+    pub addr: Ipv4Addr,
+    pub addr_v6: Ipv6Addr,
+    pub hostname: String,
 }
 
 impl ScanReport {
@@ -43,6 +50,9 @@ impl ScanReport {
             duration: Duration::default(),
             latency: Duration::default(),
             down: true,
+            hostname: String::default(),
+            addr: Ipv4Addr::new(127, 0, 0, 1),
+            addr_v6: Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
         }
     }
 
@@ -50,6 +60,7 @@ impl ScanReport {
         if self.down {
             println!("Host seems down");
         }
+        println!("Scan report for {} ({})", self.hostname, self.addr);
         println!(
             "Host is up({:2}s latency)",
             self.latency.as_millis() as f64 / 1000 as f64

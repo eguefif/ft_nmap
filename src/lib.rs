@@ -1,8 +1,9 @@
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
 use scan_report::ScanReport;
 use std::time::Duration;
 
+pub mod dns_lookup;
 pub mod interface;
 pub mod listen;
 pub mod packet_crafter;
@@ -33,6 +34,8 @@ pub struct Scan {
     pub iname: String,
     pub scan: ScanType,
     pub dest_addr: Ipv4Addr,
+    pub dest_addr_v6: Ipv6Addr,
+    pub dest_host: String,
     pub ports: Vec<u16>,
     pub report: ScanReport,
     pub latency: Duration,
@@ -45,10 +48,12 @@ impl Scan {
             iname: "wlo1".to_string(),
             scan: ScanType::REG,
             dest_addr: Ipv4Addr::new(127, 0, 0, 1),
+            dest_addr_v6: Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
             ports: Vec::new(),
             report: ScanReport::new(),
             latency: Duration::default(),
             down: true,
+            dest_host: String::default(),
         }
     }
 }
