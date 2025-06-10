@@ -34,7 +34,7 @@ pub fn run_syn_scan(scan: &mut Scan) {
         dest_addr: scan.dest_addr,
     };
 
-    for port in scan.ports.clone().into_iter() {
+    for &port in &scan.ports {
         send_params.dest_port = port;
         let port_status = scan_port(&mut rx, &mut send_params, false);
         scan.report.ports.push((port, port_status));

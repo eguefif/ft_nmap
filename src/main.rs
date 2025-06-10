@@ -1,4 +1,4 @@
-use chrono::{Datelike, Local, Timelike};
+use chrono::Local;
 use ft_nmap::dns_lookup::{dns_lookup_host, dns_lookup_ip};
 use ft_nmap::pre_scan::run_prescan;
 use ft_nmap::syn_scan::run_syn_scan;
@@ -106,14 +106,6 @@ fn get_ports(ports_param: String) -> Vec<u16> {
 }
 
 fn get_time_now() -> String {
-    let now = Local::now().fixed_offset();
-    format!(
-        "{}-{}-{} {}:{} {}",
-        now.year(),
-        now.month(),
-        now.day(),
-        now.hour(),
-        now.minute(),
-        now.timezone()
-    )
+    let now = Local::now();
+    now.format("%Y-%m-%d %H:%M %Z").to_string()
 }
