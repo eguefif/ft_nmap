@@ -1,4 +1,5 @@
 use chrono::{Datelike, Local, Timelike};
+use ft_nmap::pre_scan::run_prescan;
 use ft_nmap::syn_scan::run_syn_scan;
 use ft_nmap::{Scan, ScanType};
 use std::env;
@@ -9,7 +10,10 @@ use std::time::Instant;
 fn main() {
     println!("Starting ft_nmap at {}", get_time_now());
     let mut scan = handle_params();
-    run_scan(&mut scan);
+    if run_prescan(&mut scan) {
+        run_scan(&mut scan);
+    }
+    scan.report.display()
 }
 
 fn run_scan(scan: &mut Scan) {
@@ -19,7 +23,6 @@ fn run_scan(scan: &mut Scan) {
         ScanType::REG => todo!(),
     };
     scan.report.duration = start.elapsed();
-    scan.report.display()
 }
 
 fn handle_params() -> Scan {

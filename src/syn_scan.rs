@@ -2,15 +2,14 @@ use crate::interface::get_interface;
 use crate::listen::{listen_responses, PortStatus};
 use crate::packet_crafter::{build_packet, TcpType};
 use crate::Scan;
+use pnet::datalink::{ChannelType, Config};
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
-use std::net::{IpAddr, Ipv4Addr, TcpListener};
-
-use pnet::datalink::{ChannelType, Config};
 use pnet::packet::tcp::{ipv4_checksum, MutableTcpPacket};
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::TransportProtocol::Ipv4;
 use pnet::transport::{transport_channel, TransportReceiver, TransportSender};
+use std::net::{IpAddr, Ipv4Addr, TcpListener};
 
 const PACKET_SIZE: usize = 24;
 const PORT_LOW: u16 = 10000;

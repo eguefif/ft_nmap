@@ -1,10 +1,12 @@
 use std::net::Ipv4Addr;
 
 use scan_report::ScanReport;
+use std::time::Duration;
 
 pub mod interface;
 pub mod listen;
 pub mod packet_crafter;
+pub mod pre_scan;
 pub mod scan_report;
 pub mod syn_scan;
 
@@ -33,6 +35,7 @@ pub struct Scan {
     pub dest_addr: Ipv4Addr,
     pub ports: Vec<u16>,
     pub report: ScanReport,
+    pub latency: Duration,
 }
 
 impl Scan {
@@ -43,6 +46,7 @@ impl Scan {
             dest_addr: Ipv4Addr::new(127, 0, 0, 1),
             ports: Vec::new(),
             report: ScanReport::new(),
+            latency: Duration::default(),
         }
     }
 }
