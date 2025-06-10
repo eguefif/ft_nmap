@@ -1,22 +1,27 @@
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, Ipv6Addr};
 
+use scan_report::ScanReport;
+use std::time::Duration;
+
+pub mod dns_lookup;
 pub mod interface;
 pub mod listen;
 pub mod packet_crafter;
+pub mod pre_scan;
 pub mod scan_report;
 pub mod syn_scan;
 
-pub enum Scan {
+pub enum ScanType {
     REG,
     SYN,
 }
 
-impl Scan {
-    pub fn from_char(value: Option<char>) -> Scan {
+impl ScanType {
+    pub fn from_char(value: Option<char>) -> ScanType {
         if let Some(scan_value) = value {
             match scan_value {
-                'S' => Scan::SYN,
-                'R' => Scan::REG,
+                'S' => ScanType::SYN,
+                'R' => ScanType::REG,
                 _ => panic!("Error: invalid -s scan type"),
             }
         } else {
@@ -25,20 +30,30 @@ impl Scan {
     }
 }
 
-pub struct Params {
+pub struct Scan {
     pub iname: String,
-    pub scan: Scan,
+    pub scan: ScanType,
     pub dest_addr: Ipv4Addr,
+    pub dest_addr_v6: Ipv6Addr,
+    pub dest_host: String,
     pub ports: Vec<u16>,
+    pub report: ScanReport,
+    pub latency: Duration,
+    pub down: bool,
 }
 
-impl Params {
+impl Scan {
     pub fn default() -> Self {
         Self {
             iname: "wlo1".to_string(),
-            scan: Scan::REG,
+            scan: ScanType::REG,
             dest_addr: Ipv4Addr::new(127, 0, 0, 1),
+            dest_addr_v6: Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
             ports: Vec::new(),
+            report: ScanReport::new(),
+            latency: Duration::default(),
+            down: true,
+            dest_host: String::default(),
         }
     }
 }

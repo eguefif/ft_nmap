@@ -1,24 +1,33 @@
+use chrono::Local;
+use ft_nmap::dns_lookup::{dns_lookup_host, dns_lookup_ip};
+use ft_nmap::pre_scan::run_prescan;
 use ft_nmap::syn_scan::run_syn_scan;
-use ft_nmap::{Params, Scan};
+use ft_nmap::{Scan, ScanType};
 use std::env;
 use std::net::Ipv4Addr;
 use std::str::FromStr;
+use std::time::Instant;
 
 fn main() {
-    println!("Starting ft_nmap");
-    let params = get_params();
-    run(params);
-}
-
-fn run(params: Params) {
-    match params.scan {
-        Scan::SYN => run_syn_scan(params).display(),
-        Scan::REG => todo!(),
+    println!("Starting ft_nmap at {}", get_time_now());
+    let mut scan = handle_params();
+    if run_prescan(&mut scan) {
+        run_scan(&mut scan);
     }
+    scan.report.display()
 }
 
-fn get_params() -> Params {
-    let mut params = Params::default();
+fn run_scan(scan: &mut Scan) {
+    let start = Instant::now();
+    match scan.scan {
+        ScanType::SYN => run_syn_scan(scan),
+        ScanType::REG => todo!(),
+    };
+    scan.report.duration = start.elapsed();
+}
+
+fn handle_params() -> Scan {
+    let mut scan = Scan::default();
     let mut arg_iter = env::args();
     loop {
         if let Some(arg) = arg_iter.next() {
@@ -31,26 +40,33 @@ fn get_params() -> Params {
                     let addr = arg_iter
                         .next()
                         .expect("Error: -t needs a target IP address");
-                    params.dest_addr = Ipv4Addr::from_str(&addr).expect(
-                        "Error: impossible to create ipv4Addr object from given target IP address",
-                    );
+                    if let Ok(ip_addr) = Ipv4Addr::from_str(&addr) {
+                        scan.dest_addr = ip_addr;
+                        dns_lookup_ip(&mut scan);
+                    } else {
+                        scan.dest_host = addr;
+                        dns_lookup_host(&mut scan);
+                    }
+                    scan.report.addr = scan.dest_addr.clone();
+                    scan.report.addr_v6 = scan.dest_addr_v6.clone();
+                    scan.report.hostname = scan.dest_host.clone();
                 }
                 'i' => {
-                    params.iname = arg_iter.next().expect("Error: -i an interface");
+                    scan.iname = arg_iter.next().expect("Error: -i an interface");
                 }
 
                 'p' => {
                     let ports_value = arg_iter.next().expect("Error: -p needs ports arguments");
-                    params.ports = get_ports(ports_value);
+                    scan.ports = get_ports(ports_value);
                 }
-                's' => params.scan = Scan::from_char(arg.chars().nth(2)),
+                's' => scan.scan = ScanType::from_char(arg.chars().nth(2)),
                 _ => panic!("Error: unhandled flag"),
             }
         } else {
             break;
         }
     }
-    params
+    scan
 }
 
 fn get_flag(arg: &str) -> char {
@@ -87,4 +103,9 @@ fn get_ports(ports_param: String) -> Vec<u16> {
         }
     }
     ports
+}
+
+fn get_time_now() -> String {
+    let now = Local::now();
+    now.format("%Y-%m-%d %H:%M %Z").to_string()
 }

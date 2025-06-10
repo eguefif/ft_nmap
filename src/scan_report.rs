@@ -1,4 +1,8 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    net::{Ipv4Addr, Ipv6Addr},
+    time::Duration,
+};
 
 use crate::listen::PortStatus;
 
@@ -7,6 +11,12 @@ pub struct ScanReport {
     pub udp_services: HashMap<u16, String>,
     pub tcp_services: HashMap<u16, String>,
     pub sctp_services: HashMap<u16, String>,
+    pub duration: Duration,
+    pub latency: Duration,
+    pub down: bool,
+    pub addr: Ipv4Addr,
+    pub addr_v6: Ipv6Addr,
+    pub hostname: String,
 }
 
 impl ScanReport {
@@ -37,10 +47,24 @@ impl ScanReport {
             tcp_services,
             udp_services,
             sctp_services,
+            duration: Duration::default(),
+            latency: Duration::default(),
+            down: true,
+            hostname: String::default(),
+            addr: Ipv4Addr::new(127, 0, 0, 1),
+            addr_v6: Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
         }
     }
 
     pub fn display(&self) {
+        if self.down {
+            println!("Host seems down");
+        }
+        println!("Scan report for {} ({})", self.hostname, self.addr);
+        println!(
+            "Host is up({:2}s latency)",
+            self.latency.as_millis() as f64 / 1000 as f64
+        );
         let filtered = self.ports.iter().fold(0, |mut acc, (_, state)| {
             if let PortStatus::FILTERED = state {
                 acc += 1;
@@ -77,6 +101,10 @@ impl ScanReport {
                 }
             }
         }
+        println!(
+            "\nft_nmap done: 1 IP address (1 host up) scanned in {:.2}s",
+            (self.duration.as_millis() as f64 / 1000 as f64)
+        );
     }
 
     fn get_service(&self, port: &u16) -> &str {

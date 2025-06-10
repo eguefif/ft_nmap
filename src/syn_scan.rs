@@ -1,17 +1,15 @@
 use crate::interface::get_interface;
 use crate::listen::{listen_responses, PortStatus};
 use crate::packet_crafter::{build_packet, TcpType};
-use crate::scan_report::ScanReport;
-use crate::Params;
+use crate::Scan;
+use pnet::datalink::{ChannelType, Config};
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
-use std::net::{IpAddr, Ipv4Addr, TcpListener};
-
-use pnet::datalink::{ChannelType, Config};
 use pnet::packet::tcp::{ipv4_checksum, MutableTcpPacket};
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::TransportProtocol::Ipv4;
 use pnet::transport::{transport_channel, TransportReceiver, TransportSender};
+use std::net::{IpAddr, Ipv4Addr, TcpListener};
 
 const PACKET_SIZE: usize = 24;
 const PORT_LOW: u16 = 10000;
@@ -25,24 +23,22 @@ struct SendParams {
     dest_port: u16,
 }
 
-pub fn run_syn_scan(params: Params) -> ScanReport {
-    let source_addr = get_source_addr(&params);
+pub fn run_syn_scan(scan: &mut Scan) {
+    let source_addr = get_source_addr(&scan);
     let (mut rx, tx) = get_transports();
     let mut send_params = SendParams {
         tx,
         source_addr: source_addr,
         source_port: get_source_port(source_addr),
         dest_port: 0,
-        dest_addr: params.dest_addr,
+        dest_addr: scan.dest_addr,
     };
 
-    let mut report = ScanReport::new();
-    for port in params.ports {
+    for &port in &scan.ports {
         send_params.dest_port = port;
         let port_status = scan_port(&mut rx, &mut send_params, false);
-        report.ports.push((port, port_status));
+        scan.report.ports.push((port, port_status));
     }
-    report
 }
 
 fn scan_port(
@@ -65,8 +61,8 @@ fn scan_port(
     port_status
 }
 
-fn get_source_addr(params: &Params) -> Ipv4Addr {
-    let interface = get_interface(&params.iname);
+fn get_source_addr(scan: &Scan) -> Ipv4Addr {
+    let interface = get_interface(&scan.iname);
     for network_ip in interface.ips {
         if let IpNetwork::V4(net_addr) = network_ip {
             return net_addr.ip();
