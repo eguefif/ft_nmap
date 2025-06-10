@@ -1,6 +1,7 @@
 use pnet::packet::icmp::echo_request::MutableEchoRequestPacket;
 use pnet::packet::ipv4::{Ipv4Packet, MutableIpv4Packet};
 use pnet::packet::{MutablePacket, Packet};
+use pnet::transport::icmp_packet_iter;
 use pnet::{
     datalink::{ChannelType, Config},
     packet::{
@@ -9,6 +10,7 @@ use pnet::{
     },
     transport::{transport_channel, TransportReceiver},
 };
+use std::time::Duration;
 use std::{net::IpAddr, time::Instant};
 
 use crate::Scan;
@@ -39,7 +41,7 @@ pub fn run_prescan(scan: &mut Scan) -> bool {
         eprintln!("Error: cannot send icmp packet: {e}");
     }
 
-    if get_response(scan, rx) {
+    if get_response(scan, &mut rx) {
         scan.latency = start.elapsed();
         return false;
     }
@@ -65,6 +67,22 @@ fn get_icmp_packet(ip_buffer: &mut [u8], icmp_buffer: &mut [u8], scan: &mut Scan
     ip_packet.set_payload(icmp_packet.packet_mut());
 }
 
-fn get_response(scan: &mut Scan, rx: TransportReceiver) -> bool {
-    true
+fn get_response(scan: &mut Scan, rx: &mut TransportReceiver) -> bool {
+    let mut icmp_iter = icmp_packet_iter(rx);
+    let timeout = Duration::from_millis(1000);
+    loop {
+        match icmp_iter.next_with_timeout(timeout) {
+            Ok(Some((packet, addr))) => {
+                if addr != scan.dest_addr {
+                    continue;
+                }
+                if packet.get_icmp_code() != IcmpCode(0) {
+                    return false;
+                }
+                return true;
+            }
+            Ok(None) => return false,
+            Err(e) => panic!("Error: while listening for icmp echo: {e}"),
+        }
+    }
 }
