@@ -1,6 +1,6 @@
 use pnet::packet::icmp::echo_request::MutableEchoRequestPacket;
 use pnet::packet::ipv4::{Ipv4Packet, MutableIpv4Packet};
-use pnet::packet::{MutablePacket, Packet};
+use pnet::packet::MutablePacket;
 use pnet::transport::icmp_packet_iter;
 use pnet::{
     datalink::{ChannelType, Config},
@@ -16,7 +16,6 @@ use std::{net::IpAddr, time::Instant};
 use crate::Scan;
 
 pub fn run_prescan(scan: &mut Scan) -> bool {
-    println!("Sending ping");
     let mut config = Config::default();
     config.channel_type = ChannelType::Layer3(0x1);
 
@@ -35,21 +34,23 @@ pub fn run_prescan(scan: &mut Scan) -> bool {
     let mut packet = MutableIpv4Packet::new(&mut ip_buffer).unwrap();
     packet.set_checksum(checksum);
 
-    println!("Bytes: {:x?}", packet.packet());
     let start = Instant::now();
     if let Err(e) = tx.send_to(packet, IpAddr::V4(scan.dest_addr)) {
         eprintln!("Error: cannot send icmp packet: {e}");
     }
 
     if get_response(scan, &mut rx) {
-        scan.latency = start.elapsed();
-        return false;
+        scan.report.latency = start.elapsed();
+        scan.report.down = false;
+        return true;
     }
+    scan.report.down = true;
     false
 }
 
 fn get_icmp_packet(ip_buffer: &mut [u8], icmp_buffer: &mut [u8], scan: &mut Scan) {
-    let mut ip_packet = MutableIpv4Packet::new(ip_buffer).unwrap();
+    let mut ip_packet =
+        MutableIpv4Packet::new(ip_buffer).expect("Error: impossible to creae ip packet for icmp");
     ip_packet.set_version(4);
     ip_packet.set_header_length(5);
     ip_packet.set_total_length(38);

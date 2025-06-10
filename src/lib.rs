@@ -36,6 +36,7 @@ pub struct Scan {
     pub ports: Vec<u16>,
     pub report: ScanReport,
     pub latency: Duration,
+    pub down: bool,
 }
 
 impl Scan {
@@ -47,6 +48,7 @@ impl Scan {
             ports: Vec::new(),
             report: ScanReport::new(),
             latency: Duration::default(),
+            down: true,
         }
     }
 }

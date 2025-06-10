@@ -8,6 +8,8 @@ pub struct ScanReport {
     pub tcp_services: HashMap<u16, String>,
     pub sctp_services: HashMap<u16, String>,
     pub duration: Duration,
+    pub latency: Duration,
+    pub down: bool,
 }
 
 impl ScanReport {
@@ -39,10 +41,19 @@ impl ScanReport {
             udp_services,
             sctp_services,
             duration: Duration::default(),
+            latency: Duration::default(),
+            down: true,
         }
     }
 
     pub fn display(&self) {
+        if self.down {
+            println!("Host seems down");
+        }
+        println!(
+            "Host is up({:2}s latency)",
+            self.latency.as_millis() as f64 / 1000 as f64
+        );
         let filtered = self.ports.iter().fold(0, |mut acc, (_, state)| {
             if let PortStatus::FILTERED = state {
                 acc += 1;
@@ -80,7 +91,7 @@ impl ScanReport {
             }
         }
         println!(
-            "ft_nmap done: 1 IP address (1 host up) scanned in {:.2}s",
+            "\nft_nmap done: 1 IP address (1 host up) scanned in {:.2}s",
             (self.duration.as_millis() as f64 / 1000 as f64)
         );
     }
