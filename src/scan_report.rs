@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use crate::listen::PortStatus;
+use crate::tcp_transport::PortStatus;
 
 pub struct ScanReport {
     pub ports: Vec<(u16, PortStatus)>,

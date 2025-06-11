@@ -5,12 +5,12 @@ use std::time::Duration;
 
 pub mod dns_lookup;
 pub mod interface;
-pub mod listen;
 pub mod null_scan;
 pub mod packet_crafter;
 pub mod pre_scan;
 pub mod scan_report;
 pub mod syn_scan;
+pub mod tcp_transport;
 
 pub enum ScanType {
     REG,
