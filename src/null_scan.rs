@@ -23,7 +23,7 @@ struct SendParams {
     dest_port: u16,
 }
 
-pub fn run_syn_scan(scan: &mut Scan) {
+pub fn run_null_scan(scan: &mut Scan) {
     let source_addr = get_source_addr(&scan);
     let (mut rx, tx) = get_transports();
     let mut send_params = SendParams {
@@ -96,9 +96,9 @@ fn get_transports() -> (TransportReceiver, TransportSender) {
     }
 }
 
-fn send(params: &mut SendParams, tcp_types: &[TcpType]) {
+fn send(params: &mut SendParams, tcp_type: &[TcpType]) {
     let mut buffer = [0u8; 1500];
-    build_packet(&mut buffer, params.dest_port, params.source_port, tcp_types);
+    build_packet(&mut buffer, params.dest_port, params.source_port, tcp_type);
     let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
     packet.set_checksum(ipv4_checksum(
         &packet.to_immutable(),

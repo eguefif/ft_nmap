@@ -1,5 +1,6 @@
 use chrono::Local;
 use ft_nmap::dns_lookup::{dns_lookup_host, dns_lookup_ip};
+use ft_nmap::null_scan::run_null_scan;
 use ft_nmap::pre_scan::run_prescan;
 use ft_nmap::syn_scan::run_syn_scan;
 use ft_nmap::{Scan, ScanType};
@@ -21,6 +22,7 @@ fn run_scan(scan: &mut Scan) {
     let start = Instant::now();
     match scan.scan {
         ScanType::SYN => run_syn_scan(scan),
+        ScanType::NULL => run_null_scan(scan),
         ScanType::REG => todo!(),
     };
     scan.report.duration = start.elapsed();

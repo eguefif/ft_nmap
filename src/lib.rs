@@ -6,6 +6,7 @@ use std::time::Duration;
 pub mod dns_lookup;
 pub mod interface;
 pub mod listen;
+pub mod null_scan;
 pub mod packet_crafter;
 pub mod pre_scan;
 pub mod scan_report;
@@ -14,6 +15,7 @@ pub mod syn_scan;
 pub enum ScanType {
     REG,
     SYN,
+    NULL,
 }
 
 impl ScanType {
@@ -22,6 +24,7 @@ impl ScanType {
             match scan_value {
                 'S' => ScanType::SYN,
                 'R' => ScanType::REG,
+                'N' => ScanType::NULL,
                 _ => panic!("Error: invalid -s scan type"),
             }
         } else {
