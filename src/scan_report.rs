@@ -4,10 +4,10 @@ use std::{
     time::Duration,
 };
 
-use crate::tcp_transport::PortStatus;
+use crate::PortState;
 
 pub struct ScanReport {
-    pub ports: Vec<(u16, PortStatus)>,
+    pub ports: Vec<(u16, PortState)>,
     pub udp_services: HashMap<u16, String>,
     pub tcp_services: HashMap<u16, String>,
     pub sctp_services: HashMap<u16, String>,
@@ -66,13 +66,13 @@ impl ScanReport {
             self.latency.as_millis() as f64 / 1000 as f64
         );
         let filtered = self.ports.iter().fold(0, |mut acc, (_, state)| {
-            if let PortStatus::FILTERED = state {
+            if let PortState::FILTERED = state {
                 acc += 1;
             }
             acc
         });
         let closed = self.ports.iter().fold(0, |mut acc, (_, state)| {
-            if let PortStatus::CLOSED = state {
+            if let PortState::CLOSED = state {
                 acc += 1;
             }
             acc
@@ -88,13 +88,13 @@ impl ScanReport {
             let service = self.get_service(port);
             let port = format!("{}/tcp", port);
             match state {
-                PortStatus::OPEN => println!("{:<10}{:<10}{:<10}", port, "open", service),
-                PortStatus::FILTERED => {
+                PortState::OPEN => println!("{:<10}{:<10}{:<10}", port, "open", service),
+                PortState::FILTERED => {
                     if filtered < 50 {
                         println!("{:<10}{:<10}{:<10}", port, "filtered", service);
                     }
                 }
-                PortStatus::CLOSED => {
+                PortState::CLOSED => {
                     if closed < 50 {
                         println!("{:<10}{:<10}{:<10}", port, "closed", service);
                     }

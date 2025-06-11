@@ -1,16 +1,16 @@
 use crate::interface::get_interface;
 use crate::packet_crafter::{build_packet, TcpType};
+use crate::PortState;
 use pnet::datalink::{ChannelType, Config};
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
 use pnet::packet::tcp::{ipv4_checksum, MutableTcpPacket};
+use std::net::{IpAddr, Ipv4Addr, TcpListener};
+use std::time::Duration;
+
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::TransportProtocol::Ipv4;
 use pnet::transport::{transport_channel, TransportReceiver, TransportSender};
-use std::net::{IpAddr, Ipv4Addr, TcpListener};
-
-use std::time::Duration;
-
 use pnet::{
     packet::tcp::{TcpFlags, TcpPacket},
     transport::tcp_packet_iter,
@@ -19,22 +19,6 @@ use pnet::{
 const PACKET_SIZE: usize = 24;
 const PORT_LOW: u16 = 10000;
 const PORT_HIGH: u16 = 64000;
-
-pub enum PortStatus {
-    OPEN,
-    CLOSED,
-    FILTERED,
-}
-
-impl std::fmt::Display for PortStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            PortStatus::OPEN => write!(f, "open"),
-            PortStatus::CLOSED => write!(f, "closed"),
-            PortStatus::FILTERED => write!(f, "filtered"),
-        }
-    }
-}
 
 const TIMEOUT_MS: u64 = 500;
 
@@ -76,7 +60,7 @@ impl TCPTransport {
         }
     }
 
-    pub fn listen_responses(&mut self) -> PortStatus {
+    pub fn listen_responses(&mut self) -> PortState {
         let mut tcp_iter = tcp_packet_iter(&mut self.rx);
         let timeout = Duration::from_millis(TIMEOUT_MS);
         loop {
@@ -88,7 +72,7 @@ impl TCPTransport {
                     return get_port_status(&packet);
                 }
                 Ok(None) => {
-                    return PortStatus::FILTERED;
+                    return PortState::FILTERED;
                 }
                 Err(e) => eprintln!("Error while processing packet: {e}"),
             }
@@ -138,15 +122,15 @@ fn should_dismiss_packet(packet: &TcpPacket, port_source: u16) -> bool {
     false
 }
 
-fn get_port_status(packet: &TcpPacket) -> PortStatus {
+fn get_port_status(packet: &TcpPacket) -> PortState {
     if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
         && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
     {
-        return PortStatus::OPEN;
+        return PortState::OPEN;
     }
 
     if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
-        return PortStatus::CLOSED;
+        return PortState::CLOSED;
     }
-    return PortStatus::FILTERED;
+    return PortState::FILTERED;
 }

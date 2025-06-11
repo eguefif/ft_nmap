@@ -1,5 +1,6 @@
 use crate::packet_crafter::TcpType;
-use crate::tcp_transport::{PortStatus, TCPTransport};
+use crate::tcp_transport::TCPTransport;
+use crate::PortState;
 use crate::Scan;
 
 pub fn run_syn_scan(scan: &mut Scan) {
@@ -11,18 +12,18 @@ pub fn run_syn_scan(scan: &mut Scan) {
     }
 }
 
-fn scan_port(transport: &mut TCPTransport, filtered: bool) -> PortStatus {
+fn scan_port(transport: &mut TCPTransport, filtered: bool) -> PortState {
     transport.send(&[TcpType::SYN]);
 
     let port_status = transport.listen_responses();
     match port_status {
-        PortStatus::OPEN => transport.send(&[TcpType::RST]),
-        PortStatus::FILTERED => {
+        PortState::OPEN => transport.send(&[TcpType::RST]),
+        PortState::FILTERED => {
             if !filtered {
                 return scan_port(transport, true);
             }
         }
-        PortStatus::CLOSED => {}
+        PortState::CLOSED => {}
     }
     port_status
 }

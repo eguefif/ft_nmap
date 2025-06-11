@@ -60,3 +60,19 @@ impl Scan {
         }
     }
 }
+
+pub enum PortState {
+    OPEN,
+    CLOSED,
+    FILTERED,
+}
+
+impl std::fmt::Display for PortState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            PortState::OPEN => write!(f, "open"),
+            PortState::CLOSED => write!(f, "closed"),
+            PortState::FILTERED => write!(f, "filtered"),
+        }
+    }
+}
