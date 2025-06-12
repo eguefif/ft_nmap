@@ -1,37 +1,32 @@
-use pnet::packet::tcp::TcpFlags;
-use pnet::packet::tcp::TcpPacket;
-
+use crate::tcp_port_scanner::Response;
 use crate::tcp_port_scanner::TcpPortScanner;
 use crate::PortState;
 use crate::Scan;
 
 pub fn run_syn_scan(scan: &mut Scan) {
-    let mut scanner = TcpPortScanner::new(
-        scan.dest_addr,
-        scan.iname.clone(),
-        &interpret_response,
-        &scan.scan,
-    );
+    let mut scanner = TcpPortScanner::new(scan.dest_addr, scan.iname.clone(), &scan.scan);
     for &port in &scan.ports {
-        let port_status = scanner.scan_port(port);
+        let response = scanner.scan_port(port);
+        let port_status = interpret_response(response);
         scan.report.ports.push((port, port_status));
     }
 }
 
-fn interpret_response(packet: Option<&TcpPacket>) -> PortState {
-    match packet {
-        Some(packet) => {
-            if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
-                && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
-            {
-                return PortState::OPEN;
-            }
+// Wonder if I could refactor this.
+// the run_syn_scan is the same for everybody. The only difference is in the scan type
+// in the scan.
+// Maybe the interpret_response could be in the scan_type enum
 
-            if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
+fn interpret_response(packet: Response) -> PortState {
+    match packet {
+        Response::TCP(flags) => {
+            if flags.syn && flags.ack {
+                return PortState::OPEN;
+            } else if flags.rst {
                 return PortState::CLOSED;
             }
             return PortState::FILTERED;
         }
-        None => PortState::FILTERED,
+        Response::TIMEOUT => PortState::FILTERED,
     }
 }

@@ -1,31 +1,25 @@
-use pnet::packet::tcp::TcpFlags;
-use pnet::packet::tcp::TcpPacket;
-
+use crate::tcp_port_scanner::Response;
 use crate::tcp_port_scanner::TcpPortScanner;
 use crate::PortState;
 use crate::Scan;
 
 pub fn run_fin_scan(scan: &mut Scan) {
-    let mut scanner = TcpPortScanner::new(
-        scan.dest_addr,
-        scan.iname.clone(),
-        &interpret_response,
-        &scan.scan,
-    );
+    let mut scanner = TcpPortScanner::new(scan.dest_addr, scan.iname.clone(), &scan.scan);
     for &port in &scan.ports {
-        let port_status = scanner.scan_port(port);
+        let response = scanner.scan_port(port);
+        let port_status = interpret_response(response);
         scan.report.ports.push((port, port_status));
     }
 }
 
-fn interpret_response(packet: Option<&TcpPacket>) -> PortState {
+fn interpret_response(packet: Response) -> PortState {
     match packet {
-        Some(packet) => {
-            if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
+        Response::TCP(flags) => {
+            if flags.rst {
                 return PortState::CLOSED;
             }
             return PortState::UNDETERMINED;
         }
-        None => PortState::OpenFiltered,
+        Response::TIMEOUT => PortState::OpenFiltered,
     }
 }

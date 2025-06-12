@@ -51,7 +51,7 @@ pub enum Response {
     TIMEOUT,
 }
 
-pub struct TcpPortScanner<'a> {
+pub struct TcpPortScanner {
     tx: TransportSender,
     rx: TransportReceiver,
     source_addr: Ipv4Addr,
@@ -60,26 +60,8 @@ pub struct TcpPortScanner<'a> {
     flags: Vec<TcpFlag>,
 }
 
-impl<'a> TcpPortScanner<'a> {
+impl TcpPortScanner {
     /// iname: String it is the network interface
-    /// The `interpret_reponse` function takes a PortState.
-    /// It receives a Option<TcpPacket>. None means the tcp connection has timeout.
-    /// Here is an example of the interpret_response in the syn_scan
-    ///
-    /// ```rust
-    /// fn interpret_response(packet: Option<&TcpPacket>) -> PortState {
-    ///     if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
-    ///         && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
-    ///     {
-    ///         return PortState::OPEN;
-    ///     }
-    ///
-    ///     if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
-    ///         return PortState::CLOSED;
-    ///     }
-    ///     return PortState::FILTERED;
-    /// }
-    /// ```
     pub fn new(dest_addr: Ipv4Addr, iname: String, scan_type: &ScanType) -> Self {
         let (rx, tx) = get_transports();
         let source_addr = get_source_addr(iname);
