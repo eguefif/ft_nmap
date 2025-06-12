@@ -25,6 +25,27 @@ pub enum Response {
     TIMEOUT,
 }
 
+/// TODO: Make module documentation or struct documentation
+/// This function listen to the response and uses the attribute `interpret_response`
+/// given by the user to return a PortState.
+/// The `interpret_reponse` function takes a PortState.
+/// It receives a Option<TcpPacket>. None means the tcp connection has timeout.
+/// Here is an example of the interpret_response in the syn_scan
+///
+/// ```rust
+/// fn interpret_response(packet: Option<&TcpPacket>) -> PortState {
+///     if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
+///         && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
+///     {
+///         return PortState::OPEN;
+///     }
+///
+///     if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
+///         return PortState::CLOSED;
+///     }
+///     return PortState::FILTERED;
+/// }
+/// ```
 pub struct TcpPortScanner<'a> {
     tx: TransportSender,
     rx: TransportReceiver,
@@ -58,11 +79,11 @@ impl<'a> TcpPortScanner<'a> {
     }
 
     pub fn scan_port(&mut self, scan_port: u16) -> PortState {
-        self.send(&[TcpFlag::FIN], scan_port);
+        self.send(scan_port);
 
         let port_status = self.listen_responses();
         match port_status {
-            PortState::OPEN => self.send(&[TcpFlag::RST], scan_port),
+            PortState::OPEN => self.send(scan_port),
             PortState::FILTERED | PortState::OpenFiltered => {
                 return self.scan_port(scan_port);
             }
@@ -71,14 +92,9 @@ impl<'a> TcpPortScanner<'a> {
         port_status
     }
 
-    /// This function send a probe using a list of flags.
-    /// Example
-    /// ```
-    ///     transport.send(&[TcpFlag::SYN]);
-    /// ```
-    pub fn send(&mut self, tcp_types: &[TcpFlag], dest_port: u16) {
+    fn send(&mut self, dest_port: u16) {
         let mut buffer = [0u8; 1500];
-        build_packet(&mut buffer, dest_port, self.source_port, tcp_types);
+        build_packet(&mut buffer, dest_port, self.source_port, &self.flags);
         let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
         packet.set_checksum(ipv4_checksum(
             &packet.to_immutable(),
@@ -90,27 +106,7 @@ impl<'a> TcpPortScanner<'a> {
         }
     }
 
-    /// This function listen to the response and uses the attribute `interpret_response`
-    /// given by the user to return a PortState.
-    /// The `interpret_reponse` function takes a PortState.
-    /// It receives a Option<TcpPacket>. None means the tcp connection has timeout.
-    /// Here is an example of the interpret_response in the syn_scan
-    ///
-    /// ```rust
-    /// fn interpret_response(packet: Option<&TcpPacket>) -> PortState {
-    ///     if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
-    ///         && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
-    ///     {
-    ///         return PortState::OPEN;
-    ///     }
-    ///
-    ///     if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
-    ///         return PortState::CLOSED;
-    ///     }
-    ///     return PortState::FILTERED;
-    /// }
-    /// ```
-    pub fn listen_responses(&mut self) -> PortState {
+    fn listen_responses(&mut self) -> PortState {
         let mut tcp_iter = tcp_packet_iter(&mut self.rx);
         let timeout = Duration::from_millis(TIMEOUT_MS);
         loop {

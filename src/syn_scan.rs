@@ -6,14 +6,14 @@ use crate::PortState;
 use crate::Scan;
 
 pub fn run_syn_scan(scan: &mut Scan) {
-    let mut transport = TcpPortScanner::new(
+    let mut scanner = TcpPortScanner::new(
         scan.dest_addr,
         scan.iname.clone(),
         &interpret_response,
         &scan.scan,
     );
     for &port in &scan.ports {
-        let port_status = transport.scan_port(port);
+        let port_status = scanner.scan_port(port);
         scan.report.ports.push((port, port_status));
     }
 }
