@@ -25,27 +25,6 @@ pub enum Response {
     TIMEOUT,
 }
 
-/// TODO: Make module documentation or struct documentation
-/// This function listen to the response and uses the attribute `interpret_response`
-/// given by the user to return a PortState.
-/// The `interpret_reponse` function takes a PortState.
-/// It receives a Option<TcpPacket>. None means the tcp connection has timeout.
-/// Here is an example of the interpret_response in the syn_scan
-///
-/// ```rust
-/// fn interpret_response(packet: Option<&TcpPacket>) -> PortState {
-///     if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
-///         && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
-///     {
-///         return PortState::OPEN;
-///     }
-///
-///     if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
-///         return PortState::CLOSED;
-///     }
-///     return PortState::FILTERED;
-/// }
-/// ```
 pub struct TcpPortScanner<'a> {
     tx: TransportSender,
     rx: TransportReceiver,
@@ -57,6 +36,25 @@ pub struct TcpPortScanner<'a> {
 }
 
 impl<'a> TcpPortScanner<'a> {
+    /// iname: String it is the network interface
+    /// The `interpret_reponse` function takes a PortState.
+    /// It receives a Option<TcpPacket>. None means the tcp connection has timeout.
+    /// Here is an example of the interpret_response in the syn_scan
+    ///
+    /// ```rust
+    /// fn interpret_response(packet: Option<&TcpPacket>) -> PortState {
+    ///     if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
+    ///         && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
+    ///     {
+    ///         return PortState::OPEN;
+    ///     }
+    ///
+    ///     if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
+    ///         return PortState::CLOSED;
+    ///     }
+    ///     return PortState::FILTERED;
+    /// }
+    /// ```
     pub fn new(
         dest_addr: Ipv4Addr,
         iname: String,
@@ -79,17 +77,28 @@ impl<'a> TcpPortScanner<'a> {
     }
 
     pub fn scan_port(&mut self, scan_port: u16) -> PortState {
-        self.send(scan_port);
+        let mut retry = true;
 
-        let port_status = self.listen_responses();
-        match port_status {
-            PortState::OPEN => self.send(scan_port),
-            PortState::FILTERED | PortState::OpenFiltered => {
-                return self.scan_port(scan_port);
+        loop {
+            self.send(scan_port);
+            let port_status = self.listen_responses();
+            match port_status {
+                PortState::OPEN => {
+                    self.send(scan_port);
+                    return port_status;
+                }
+                PortState::FILTERED | PortState::OpenFiltered => {
+                    if retry {
+                        retry = false;
+                        continue;
+                    }
+                    return port_status;
+                }
+                PortState::CLOSED | PortState::UNFILTERED | PortState::UNDETERMINED => {
+                    return port_status
+                }
             }
-            PortState::CLOSED | PortState::UNFILTERED | PortState::UNDETERMINED => {}
         }
-        port_status
     }
 
     fn send(&mut self, dest_port: u16) {
