@@ -1,31 +1,7 @@
 use pnet::packet::tcp::{MutableTcpPacket, TcpOption, TcpOptionNumber};
 use rand::prelude::*;
 
-pub enum TcpFlag {
-    SYN,
-    RST,
-    ACK,
-    PSH,
-    FIN,
-    URG,
-    ECE,
-    CWR,
-}
-
-impl TcpFlag {
-    pub fn get_flag(&self) -> u8 {
-        match self {
-            TcpFlag::FIN => 0b0000_0001,
-            TcpFlag::SYN => 0b0000_0010,
-            TcpFlag::RST => 0b0000_0100,
-            TcpFlag::PSH => 0b0000_1000,
-            TcpFlag::ACK => 0b0001_0000,
-            TcpFlag::URG => 0b0010_0000,
-            TcpFlag::ECE => 0b0100_0000,
-            TcpFlag::CWR => 0b1000_0000,
-        }
-    }
-}
+use crate::tcp_port_scanner::TcpFlag;
 
 pub fn build_packet(buffer: &mut [u8], port: u16, source_port: u16, tcp_types: &[TcpFlag]) {
     let mut rng = rand::rng();

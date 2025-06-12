@@ -1,13 +1,14 @@
 use crate::interface::get_interface;
-use crate::packet_crafter::{build_packet, TcpFlag};
+use crate::packet_crafter::build_packet;
 use crate::scan_type::ScanType;
+
+use std::net::{IpAddr, Ipv4Addr, TcpListener};
+use std::time::Duration;
+
 use pnet::datalink::{ChannelType, Config};
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
 use pnet::packet::tcp::{ipv4_checksum, MutableTcpPacket};
-use std::net::{IpAddr, Ipv4Addr, TcpListener};
-use std::time::Duration;
-
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::TransportProtocol::Ipv4;
 use pnet::transport::{transport_channel, TransportReceiver, TransportSender};
@@ -17,7 +18,7 @@ const PACKET_SIZE: usize = 24;
 const PORT_LOW: u16 = 10000;
 const PORT_HIGH: u16 = 64000;
 
-const TIMEOUT_MS: u64 = 250;
+const TIMEOUT_MS: u64 = 1000;
 
 pub struct TcpFlags {
     pub syn: bool,
@@ -33,6 +34,7 @@ pub struct TcpFlags {
 impl TcpFlags {
     pub fn new(tcp_packet: &TcpPacket) -> Self {
         let flags = tcp_packet.get_flags();
+        println!("flags: {:?}", flags);
         Self {
             syn: flags & TcpFlag::SYN.get_flag() == TcpFlag::SYN.get_flag(),
             fin: flags & TcpFlag::FIN.get_flag() == TcpFlag::FIN.get_flag(),
@@ -42,6 +44,33 @@ impl TcpFlags {
             urg: flags & TcpFlag::URG.get_flag() == TcpFlag::URG.get_flag(),
             ece: flags & TcpFlag::ECE.get_flag() == TcpFlag::ECE.get_flag(),
             cwr: flags & TcpFlag::CWR.get_flag() == TcpFlag::CWR.get_flag(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum TcpFlag {
+    SYN,
+    RST,
+    ACK,
+    PSH,
+    FIN,
+    URG,
+    ECE,
+    CWR,
+}
+
+impl TcpFlag {
+    pub fn get_flag(&self) -> u8 {
+        match self {
+            TcpFlag::FIN => 0b0000_0001,
+            TcpFlag::SYN => 0b0000_0010,
+            TcpFlag::RST => 0b0000_0100,
+            TcpFlag::PSH => 0b0000_1000,
+            TcpFlag::ACK => 0b0001_0000,
+            TcpFlag::URG => 0b0010_0000,
+            TcpFlag::ECE => 0b0100_0000,
+            TcpFlag::CWR => 0b1000_0000,
         }
     }
 }
@@ -66,7 +95,7 @@ impl TcpPortScanner {
         let (rx, tx) = get_transports();
         let source_addr = get_source_addr(iname);
         let source_port = get_source_port(source_addr);
-        let flags = get_flags(scan_type);
+        let flags = scan_type.get_flags();
         Self {
             tx,
             rx,
@@ -98,6 +127,7 @@ impl TcpPortScanner {
 
     fn send(&mut self, dest_port: u16) {
         let mut buffer = [0u8; 1500];
+        println!("flags sending: {:?}", self.flags);
         build_packet(&mut buffer, dest_port, self.source_port, &self.flags);
         let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
         packet.set_checksum(ipv4_checksum(
@@ -122,11 +152,20 @@ impl TcpPortScanner {
                     let flags = TcpFlags::new(&packet);
                     return Response::TCP(flags);
                 }
-                Ok(None) => return Response::TIMEOUT,
+                Ok(None) => {
+                    return Response::TIMEOUT;
+                }
                 Err(e) => panic!("Error: error while listening response: {e}"),
             }
         }
     }
+}
+
+fn should_dismiss_packet(packet: &TcpPacket, port_source: u16) -> bool {
+    if packet.get_destination() != port_source {
+        return true;
+    }
+    false
 }
 
 fn get_source_addr(iname: String) -> Ipv4Addr {
@@ -161,22 +200,5 @@ fn get_transports() -> (TransportReceiver, TransportSender) {
     match transport_channel(4096, protocol) {
         Ok((tx, rx)) => (rx, tx),
         Err(e) => panic!("Error: {e}"),
-    }
-}
-
-fn should_dismiss_packet(packet: &TcpPacket, port_source: u16) -> bool {
-    if packet.get_destination() != port_source {
-        return true;
-    }
-    false
-}
-
-fn get_flags(scan_type: &ScanType) -> Vec<TcpFlag> {
-    match scan_type {
-        ScanType::SYN => vec![TcpFlag::RST],
-        ScanType::ACK => vec![TcpFlag::ACK],
-        ScanType::NULL => vec![],
-        ScanType::FIN => vec![TcpFlag::FIN],
-        ScanType::XMAS => vec![TcpFlag::RST, TcpFlag::URG, TcpFlag::PSH],
     }
 }

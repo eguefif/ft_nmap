@@ -1,4 +1,7 @@
-use crate::{tcp_port_scanner::Response, PortState};
+use crate::{
+    scanner::PortState,
+    tcp_port_scanner::{Response, TcpFlag},
+};
 
 pub enum ScanType {
     SYN,
@@ -33,6 +36,16 @@ impl ScanType {
             ScanType::ACK => interpret_ack_scan_response(response),
         }
     }
+
+    pub fn get_flags(&self) -> Vec<TcpFlag> {
+        match self {
+            ScanType::SYN => vec![TcpFlag::SYN],
+            ScanType::ACK => vec![TcpFlag::ACK],
+            ScanType::NULL => vec![],
+            ScanType::FIN => vec![TcpFlag::FIN],
+            ScanType::XMAS => vec![TcpFlag::RST, TcpFlag::URG, TcpFlag::PSH],
+        }
+    }
 }
 
 fn interpret_syn_scan_response(packet: Response) -> PortState {
@@ -43,6 +56,7 @@ fn interpret_syn_scan_response(packet: Response) -> PortState {
             } else if flags.rst {
                 return PortState::CLOSED;
             }
+            // TODO: should we have something like unexpected syn response ?
             return PortState::FILTERED;
         }
         Response::TIMEOUT => PortState::FILTERED,
