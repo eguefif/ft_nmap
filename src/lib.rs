@@ -64,6 +64,7 @@ pub enum PortState {
     CLOSED,
     FILTERED,
     OpenFiltered,
+    UNDETERMINED,
 }
 
 impl std::fmt::Display for PortState {
@@ -73,6 +74,7 @@ impl std::fmt::Display for PortState {
             PortState::CLOSED => write!(f, "closed"),
             PortState::FILTERED => write!(f, "filtered"),
             PortState::OpenFiltered => write!(f, "open|filtered"),
+            PortState::UNDETERMINED => write!(f, "undetermined"),
         }
     }
 }

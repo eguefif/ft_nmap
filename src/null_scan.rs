@@ -26,7 +26,7 @@ fn scan_port(transport: &mut TCPTransport, filtered: bool) -> PortState {
                 return scan_port(transport, true);
             }
         }
-        PortState::CLOSED => {}
+        PortState::CLOSED | PortState::UNDETERMINED => {}
     }
     port_status
 }
@@ -34,17 +34,11 @@ fn scan_port(transport: &mut TCPTransport, filtered: bool) -> PortState {
 fn interpret_response(packet: Option<&TcpPacket>) -> PortState {
     match packet {
         Some(packet) => {
-            if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
-                && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
-            {
-                return PortState::OPEN;
-            }
-
             if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
                 return PortState::CLOSED;
             }
-            return PortState::FILTERED;
+            return PortState::UNDETERMINED;
         }
-        None => PortState::FILTERED,
+        None => PortState::OpenFiltered,
     }
 }

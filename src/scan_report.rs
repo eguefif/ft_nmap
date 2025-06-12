@@ -118,6 +118,7 @@ impl ScanReport {
                         println!("{:<10}{:<10}{:<10}", port, "open|filtered", service);
                     }
                 }
+                PortState::UNDETERMINED => {}
             }
         }
         println!(

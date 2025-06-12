@@ -26,7 +26,7 @@ fn scan_port(transport: &mut TCPTransport, filtered: bool) -> PortState {
                 return scan_port(transport, true);
             }
         }
-        PortState::CLOSED => {}
+        PortState::CLOSED | PortState::UNDETERMINED => {}
     }
     port_status
 }
