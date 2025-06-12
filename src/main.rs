@@ -1,4 +1,5 @@
 use chrono::Local;
+use ft_nmap::ack_scan::run_ack_scan;
 use ft_nmap::dns_lookup::{dns_lookup_host, dns_lookup_ip};
 use ft_nmap::fin_scan::run_fin_scan;
 use ft_nmap::null_scan::run_null_scan;
@@ -27,6 +28,7 @@ fn run_scan(scan: &mut Scan) {
         ScanType::NULL => run_null_scan(scan),
         ScanType::XMAS => run_xmas_scan(scan),
         ScanType::FIN => run_fin_scan(scan),
+        ScanType::ACK => run_ack_scan(scan),
     };
     scan.report.duration = start.elapsed();
 }

@@ -78,6 +78,13 @@ impl ScanReport {
             acc
         });
 
+        let unfiltered = self.ports.iter().fold(0, |mut acc, (_, state)| {
+            if let PortState::UNFILTERED = state {
+                acc += 1;
+            }
+            acc
+        });
+
         let open_filtered = self.ports.iter().fold(0, |mut acc, (_, state)| {
             if let PortState::OpenFiltered = state {
                 acc += 1;
@@ -97,6 +104,13 @@ impl ScanReport {
                 open_filtered
             );
         }
+
+        if unfiltered > 50 {
+            println!(
+                "Not shown: {} unfiltered tcp ports (return RST)",
+                unfiltered
+            );
+        }
         println!("{:<10}{:<15}{:<10}", "PORT", "STATE", "SERVICE");
         for (port, state) in self.ports.iter() {
             let service = self.get_service(port);
@@ -114,8 +128,13 @@ impl ScanReport {
                     }
                 }
                 PortState::OpenFiltered => {
-                    if open_filtered < 50 {
+                    if unfiltered < 50 {
                         println!("{:<10}{:<15}{:<10}", port, "open|filtered", service);
+                    }
+                }
+                PortState::UNFILTERED => {
+                    if open_filtered < 50 {
+                        println!("{:<10}{:<15}{:<10}", port, "unfiltered", service);
                     }
                 }
                 PortState::UNDETERMINED => {}

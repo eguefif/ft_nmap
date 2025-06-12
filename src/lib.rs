@@ -3,6 +3,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use scan_report::ScanReport;
 use std::time::Duration;
 
+pub mod ack_scan;
 pub mod dns_lookup;
 pub mod fin_scan;
 pub mod interface;
@@ -19,6 +20,7 @@ pub enum ScanType {
     FIN,
     XMAS,
     NULL,
+    ACK,
 }
 
 impl ScanType {
@@ -29,6 +31,7 @@ impl ScanType {
                 'N' => ScanType::NULL,
                 'X' => ScanType::XMAS,
                 'F' => ScanType::FIN,
+                'A' => ScanType::ACK,
                 _ => panic!("Error: invalid -s scan type"),
             }
         } else {
@@ -69,6 +72,7 @@ pub enum PortState {
     OPEN,
     CLOSED,
     FILTERED,
+    UNFILTERED,
     OpenFiltered,
     UNDETERMINED,
 }
@@ -79,6 +83,7 @@ impl std::fmt::Display for PortState {
             PortState::OPEN => write!(f, "open"),
             PortState::CLOSED => write!(f, "closed"),
             PortState::FILTERED => write!(f, "filtered"),
+            PortState::UNFILTERED => write!(f, "unfiltered"),
             PortState::OpenFiltered => write!(f, "open|filtered"),
             PortState::UNDETERMINED => write!(f, "undetermined"),
         }

@@ -6,7 +6,7 @@ use crate::tcp_transport::TCPTransport;
 use crate::PortState;
 use crate::Scan;
 
-pub fn run_xmas_scan(scan: &mut Scan) {
+pub fn run_ack_scan(scan: &mut Scan) {
     let mut transport = TCPTransport::new(scan.dest_addr, scan.iname.clone(), &interpret_response);
     for &port in &scan.ports {
         transport.dest_port = port;
@@ -16,7 +16,7 @@ pub fn run_xmas_scan(scan: &mut Scan) {
 }
 
 fn scan_port(transport: &mut TCPTransport, filtered: bool) -> PortState {
-    transport.send(&[TcpFlag::RST, TcpFlag::URG, TcpFlag::PSH]);
+    transport.send(&[TcpFlag::ACK]);
 
     let port_status = transport.listen_responses();
     match port_status {
@@ -35,10 +35,10 @@ fn interpret_response(packet: Option<&TcpPacket>) -> PortState {
     match packet {
         Some(packet) => {
             if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
-                return PortState::CLOSED;
+                return PortState::UNFILTERED;
             }
-            return PortState::UNDETERMINED;
+            return PortState::FILTERED;
         }
-        None => PortState::OpenFiltered,
+        None => PortState::FILTERED,
     }
 }
