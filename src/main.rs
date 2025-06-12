@@ -1,8 +1,10 @@
 use chrono::Local;
 use ft_nmap::dns_lookup::{dns_lookup_host, dns_lookup_ip};
+use ft_nmap::fin_scan::run_fin_scan;
 use ft_nmap::null_scan::run_null_scan;
 use ft_nmap::pre_scan::run_prescan;
 use ft_nmap::syn_scan::run_syn_scan;
+use ft_nmap::xmas_scan::run_xmas_scan;
 use ft_nmap::{Scan, ScanType};
 use std::env;
 use std::net::Ipv4Addr;
@@ -23,6 +25,8 @@ fn run_scan(scan: &mut Scan) {
     match scan.scan {
         ScanType::SYN => run_syn_scan(scan),
         ScanType::NULL => run_null_scan(scan),
+        ScanType::XMAS => run_xmas_scan(scan),
+        ScanType::FIN => run_fin_scan(scan),
     };
     scan.report.duration = start.elapsed();
 }

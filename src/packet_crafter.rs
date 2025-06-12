@@ -7,16 +7,18 @@ pub enum TcpFlag {
     ACK,
     PSH,
     FIN,
+    URG,
 }
 
 impl TcpFlag {
     pub fn get_flag(&self) -> u8 {
         match self {
-            TcpFlag::FIN => 0b000001,
-            TcpFlag::SYN => 0b000010,
-            TcpFlag::RST => 0b000100,
-            TcpFlag::PSH => 0b001000,
-            TcpFlag::ACK => 0b010000,
+            TcpFlag::FIN => 0b0000_0001,
+            TcpFlag::SYN => 0b0000_0010,
+            TcpFlag::RST => 0b0000_0100,
+            TcpFlag::PSH => 0b0000_1000,
+            TcpFlag::ACK => 0b0001_0000,
+            TcpFlag::URG => 0b0010_0000,
         }
     }
 }

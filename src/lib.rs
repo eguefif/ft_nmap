@@ -4,6 +4,7 @@ use scan_report::ScanReport;
 use std::time::Duration;
 
 pub mod dns_lookup;
+pub mod fin_scan;
 pub mod interface;
 pub mod null_scan;
 pub mod packet_crafter;
@@ -11,9 +12,12 @@ pub mod pre_scan;
 pub mod scan_report;
 pub mod syn_scan;
 pub mod tcp_transport;
+pub mod xmas_scan;
 
 pub enum ScanType {
     SYN,
+    FIN,
+    XMAS,
     NULL,
 }
 
@@ -23,6 +27,8 @@ impl ScanType {
             match scan_value {
                 'S' => ScanType::SYN,
                 'N' => ScanType::NULL,
+                'X' => ScanType::XMAS,
+                'F' => ScanType::FIN,
                 _ => panic!("Error: invalid -s scan type"),
             }
         } else {
