@@ -21,7 +21,7 @@ fn scan_port(transport: &mut TCPTransport, filtered: bool) -> PortState {
     let port_status = transport.listen_responses();
     match port_status {
         PortState::OPEN => transport.send(&[TcpFlag::RST]),
-        PortState::FILTERED => {
+        PortState::FILTERED | PortState::OpenFiltered => {
             if !filtered {
                 return scan_port(transport, true);
             }

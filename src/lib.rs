@@ -13,7 +13,6 @@ pub mod syn_scan;
 pub mod tcp_transport;
 
 pub enum ScanType {
-    REG,
     SYN,
     NULL,
 }
@@ -23,7 +22,6 @@ impl ScanType {
         if let Some(scan_value) = value {
             match scan_value {
                 'S' => ScanType::SYN,
-                'R' => ScanType::REG,
                 'N' => ScanType::NULL,
                 _ => panic!("Error: invalid -s scan type"),
             }
@@ -49,7 +47,7 @@ impl Scan {
     pub fn default() -> Self {
         Self {
             iname: "wlo1".to_string(),
-            scan: ScanType::REG,
+            scan: ScanType::SYN,
             dest_addr: Ipv4Addr::new(127, 0, 0, 1),
             dest_addr_v6: Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
             ports: Vec::new(),
@@ -65,6 +63,7 @@ pub enum PortState {
     OPEN,
     CLOSED,
     FILTERED,
+    OpenFiltered,
 }
 
 impl std::fmt::Display for PortState {
@@ -73,6 +72,7 @@ impl std::fmt::Display for PortState {
             PortState::OPEN => write!(f, "open"),
             PortState::CLOSED => write!(f, "closed"),
             PortState::FILTERED => write!(f, "filtered"),
+            PortState::OpenFiltered => write!(f, "open|filtered"),
         }
     }
 }

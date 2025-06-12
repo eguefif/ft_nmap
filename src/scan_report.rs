@@ -77,11 +77,25 @@ impl ScanReport {
             }
             acc
         });
+
+        let open_filtered = self.ports.iter().fold(0, |mut acc, (_, state)| {
+            if let PortState::OpenFiltered = state {
+                acc += 1;
+            }
+            acc
+        });
         if filtered > 50 {
             println!("Not shown: {} filtered tcp ports (no-reponse)", filtered);
         }
         if closed > 50 {
             println!("Not shown: {} closed tcp ports (return RST)", closed);
+        }
+
+        if open_filtered > 50 {
+            println!(
+                "Not shown: {} open|filtered tcp ports (return RST)",
+                open_filtered
+            );
         }
         println!("{:<10}{:<10}{:<10}", "PORT", "STATE", "SERVICE");
         for (port, state) in self.ports.iter() {
@@ -97,6 +111,11 @@ impl ScanReport {
                 PortState::CLOSED => {
                     if closed < 50 {
                         println!("{:<10}{:<10}{:<10}", port, "closed", service);
+                    }
+                }
+                PortState::OpenFiltered => {
+                    if open_filtered < 50 {
+                        println!("{:<10}{:<10}{:<10}", port, "open|filtered", service);
                     }
                 }
             }
