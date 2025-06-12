@@ -1,7 +1,7 @@
 use pnet::packet::tcp::TcpFlags;
 use pnet::packet::tcp::TcpPacket;
 
-use crate::tcp_transport::TcpPortScanner;
+use crate::tcp_port_scanner::TcpPortScanner;
 use crate::PortState;
 use crate::Scan;
 

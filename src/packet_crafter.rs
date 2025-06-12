@@ -8,6 +8,8 @@ pub enum TcpFlag {
     PSH,
     FIN,
     URG,
+    ECE,
+    CWR,
 }
 
 impl TcpFlag {
@@ -19,6 +21,8 @@ impl TcpFlag {
             TcpFlag::PSH => 0b0000_1000,
             TcpFlag::ACK => 0b0001_0000,
             TcpFlag::URG => 0b0010_0000,
+            TcpFlag::ECE => 0b0100_0000,
+            TcpFlag::CWR => 0b1000_0000,
         }
     }
 }

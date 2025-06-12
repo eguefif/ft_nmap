@@ -1,6 +1,6 @@
 use crate::interface::get_interface;
 use crate::packet_crafter::{build_packet, TcpFlag};
-use crate::{PortState, ScanType};
+use crate::ScanType;
 use pnet::datalink::{ChannelType, Config};
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
@@ -19,9 +19,35 @@ const PORT_HIGH: u16 = 64000;
 
 const TIMEOUT_MS: u64 = 250;
 
+pub struct TcpFlags {
+    pub syn: bool,
+    pub fin: bool,
+    pub ack: bool,
+    pub rst: bool,
+    pub psh: bool,
+    pub urg: bool,
+    pub ece: bool,
+    pub cwr: bool,
+}
+
+impl TcpFlags {
+    pub fn new(tcp_packet: &TcpPacket) -> Self {
+        let flags = tcp_packet.get_flags();
+        Self {
+            syn: flags & TcpFlag::SYN.get_flag() == TcpFlag::SYN.get_flag(),
+            fin: flags & TcpFlag::FIN.get_flag() == TcpFlag::FIN.get_flag(),
+            ack: flags & TcpFlag::ACK.get_flag() == TcpFlag::ACK.get_flag(),
+            rst: flags & TcpFlag::RST.get_flag() == TcpFlag::RST.get_flag(),
+            psh: flags & TcpFlag::PSH.get_flag() == TcpFlag::PSH.get_flag(),
+            urg: flags & TcpFlag::URG.get_flag() == TcpFlag::URG.get_flag(),
+            ece: flags & TcpFlag::ECE.get_flag() == TcpFlag::ECE.get_flag(),
+            cwr: flags & TcpFlag::CWR.get_flag() == TcpFlag::CWR.get_flag(),
+        }
+    }
+}
+
 pub enum Response {
-    SUCCESS,
-    FAILURE,
+    TCP(TcpFlags),
     TIMEOUT,
 }
 
@@ -31,7 +57,6 @@ pub struct TcpPortScanner<'a> {
     source_addr: Ipv4Addr,
     source_port: u16,
     dest_addr: Ipv4Addr,
-    interpret_response: &'a dyn Fn(Option<&TcpPacket>) -> PortState,
     flags: Vec<TcpFlag>,
 }
 
@@ -55,12 +80,7 @@ impl<'a> TcpPortScanner<'a> {
     ///     return PortState::FILTERED;
     /// }
     /// ```
-    pub fn new(
-        dest_addr: Ipv4Addr,
-        iname: String,
-        interpret_response: &'a dyn Fn(Option<&TcpPacket>) -> PortState,
-        scan_type: &ScanType,
-    ) -> Self {
+    pub fn new(dest_addr: Ipv4Addr, iname: String, scan_type: &ScanType) -> Self {
         let (rx, tx) = get_transports();
         let source_addr = get_source_addr(iname);
         let source_port = get_source_port(source_addr);
@@ -71,32 +91,25 @@ impl<'a> TcpPortScanner<'a> {
             source_addr,
             dest_addr,
             source_port,
-            interpret_response,
             flags,
         }
     }
 
-    pub fn scan_port(&mut self, scan_port: u16) -> PortState {
+    pub fn scan_port(&mut self, scan_port: u16) -> Response {
         let mut retry = true;
 
         loop {
             self.send(scan_port);
-            let port_status = self.listen_responses();
-            match port_status {
-                PortState::OPEN => {
-                    self.send(scan_port);
-                    return port_status;
-                }
-                PortState::FILTERED | PortState::OpenFiltered => {
+            let response = self.listen_responses();
+            match response {
+                Response::TIMEOUT => {
                     if retry {
                         retry = false;
                         continue;
                     }
-                    return port_status;
+                    return response;
                 }
-                PortState::CLOSED | PortState::UNFILTERED | PortState::UNDETERMINED => {
-                    return port_status
-                }
+                _ => return response,
             }
         }
     }
@@ -115,7 +128,7 @@ impl<'a> TcpPortScanner<'a> {
         }
     }
 
-    fn listen_responses(&mut self) -> PortState {
+    fn listen_responses(&mut self) -> Response {
         let mut tcp_iter = tcp_packet_iter(&mut self.rx);
         let timeout = Duration::from_millis(TIMEOUT_MS);
         loop {
@@ -124,12 +137,11 @@ impl<'a> TcpPortScanner<'a> {
                     if should_dismiss_packet(&packet, self.source_port) {
                         continue;
                     }
-                    return (self.interpret_response)(Some(&packet));
+                    let flags = TcpFlags::new(&packet);
+                    return Response::TCP(flags);
                 }
-                Ok(None) => {
-                    return (self.interpret_response)(None);
-                }
-                Err(e) => eprintln!("Error while processing packet: {e}"),
+                Ok(None) => return Response::TIMEOUT,
+                Err(e) => panic!("Error: error while listening response: {e}"),
             }
         }
     }
