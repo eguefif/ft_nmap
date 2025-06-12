@@ -1,5 +1,5 @@
 use crate::interface::get_interface;
-use crate::packet_crafter::{build_packet, TcpType};
+use crate::packet_crafter::{build_packet, TcpFlag};
 use crate::PortState;
 use pnet::datalink::{ChannelType, Config};
 use pnet::ipnetwork::IpNetwork;
@@ -11,28 +11,36 @@ use std::time::Duration;
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::TransportProtocol::Ipv4;
 use pnet::transport::{transport_channel, TransportReceiver, TransportSender};
-use pnet::{
-    packet::tcp::{TcpFlags, TcpPacket},
-    transport::tcp_packet_iter,
-};
+use pnet::{packet::tcp::TcpPacket, transport::tcp_packet_iter};
 
 const PACKET_SIZE: usize = 24;
 const PORT_LOW: u16 = 10000;
 const PORT_HIGH: u16 = 64000;
 
-const TIMEOUT_MS: u64 = 500;
+const TIMEOUT_MS: u64 = 250;
 
-pub struct TCPTransport {
+pub enum Response {
+    SUCCESS,
+    FAILURE,
+    TIMEOUT,
+}
+
+pub struct TCPTransport<'a> {
     tx: TransportSender,
     rx: TransportReceiver,
     source_addr: Ipv4Addr,
     source_port: u16,
     dest_addr: Ipv4Addr,
     pub dest_port: u16,
+    interpret_response: &'a dyn Fn(&TcpPacket) -> PortState,
 }
 
-impl TCPTransport {
-    pub fn new(dest_addr: Ipv4Addr, iname: String) -> Self {
+impl<'a> TCPTransport<'a> {
+    pub fn new(
+        dest_addr: Ipv4Addr,
+        iname: String,
+        interpret_response: &'a dyn Fn(&TcpPacket) -> PortState,
+    ) -> Self {
         let (rx, tx) = get_transports();
         let source_addr = get_source_addr(iname);
         let source_port = get_source_port(source_addr);
@@ -43,10 +51,16 @@ impl TCPTransport {
             dest_addr,
             source_port,
             dest_port: 0,
+            interpret_response,
         }
     }
 
-    pub fn send(&mut self, tcp_types: &[TcpType]) {
+    /// This function send a probe using a list of flags.
+    /// Example
+    /// ```
+    ///     transport.send(&[TcpFlag::SYN]);
+    /// ```
+    pub fn send(&mut self, tcp_types: &[TcpFlag]) {
         let mut buffer = [0u8; 1500];
         build_packet(&mut buffer, self.dest_port, self.source_port, tcp_types);
         let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
@@ -60,6 +74,25 @@ impl TCPTransport {
         }
     }
 
+    /// This function listen to the repsonse and uses the attribute `interpret_response`
+    /// given by the user to return a PortState.
+    /// This function needs to return a PortState. It receives a TcpPacket.
+    /// Here is an example of the interpret_response in the syn_scan
+    ///
+    /// ```rust
+    /// fn interpret_response(packet: &TcpPacket) -> PortState {
+    ///     if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
+    ///         && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
+    ///     {
+    ///         return PortState::OPEN;
+    ///     }
+    ///
+    ///     if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
+    ///         return PortState::CLOSED;
+    ///     }
+    ///     return PortState::FILTERED;
+    /// }
+    /// ```
     pub fn listen_responses(&mut self) -> PortState {
         let mut tcp_iter = tcp_packet_iter(&mut self.rx);
         let timeout = Duration::from_millis(TIMEOUT_MS);
@@ -69,7 +102,7 @@ impl TCPTransport {
                     if should_dismiss_packet(&packet, self.source_port) {
                         continue;
                     }
-                    return get_port_status(&packet);
+                    return (self.interpret_response)(&packet);
                 }
                 Ok(None) => {
                     return PortState::FILTERED;
@@ -120,17 +153,4 @@ fn should_dismiss_packet(packet: &TcpPacket, port_source: u16) -> bool {
         return true;
     }
     false
-}
-
-fn get_port_status(packet: &TcpPacket) -> PortState {
-    if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
-        && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
-    {
-        return PortState::OPEN;
-    }
-
-    if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
-        return PortState::CLOSED;
-    }
-    return PortState::FILTERED;
 }
