@@ -1,7 +1,9 @@
 use std::net::{Ipv4Addr, Ipv6Addr};
 
 use scan_report::ScanReport;
+use scan_type::ScanType;
 use std::time::Duration;
+use tcp_port_scanner::TcpPortScanner;
 
 pub mod ack_scan;
 pub mod dns_lookup;
@@ -15,31 +17,6 @@ pub mod scan_type;
 pub mod syn_scan;
 pub mod tcp_port_scanner;
 pub mod xmas_scan;
-
-pub enum ScanType {
-    SYN,
-    FIN,
-    XMAS,
-    NULL,
-    ACK,
-}
-
-impl ScanType {
-    pub fn from_char(value: Option<char>) -> ScanType {
-        if let Some(scan_value) = value {
-            match scan_value {
-                'S' => ScanType::SYN,
-                'N' => ScanType::NULL,
-                'X' => ScanType::XMAS,
-                'F' => ScanType::FIN,
-                'A' => ScanType::ACK,
-                _ => panic!("Error: invalid -s scan type"),
-            }
-        } else {
-            panic!("Error: no value for -s");
-        }
-    }
-}
 
 pub struct Scan {
     pub iname: String,
@@ -65,6 +42,14 @@ impl Scan {
             latency: Duration::default(),
             down: true,
             dest_host: String::default(),
+        }
+    }
+    pub fn run_scan(&mut self) {
+        let mut scanner = TcpPortScanner::new(self.dest_addr, self.iname.clone(), &self.scan);
+        for &port in &self.ports {
+            let response = scanner.scan_port(port);
+            let port_status = self.scan.interpret_response(response);
+            self.report.ports.push((port, port_status));
         }
     }
 }
