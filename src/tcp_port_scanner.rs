@@ -1,6 +1,6 @@
 use crate::interface::get_interface;
 use crate::packet_crafter::{build_packet, TcpFlag};
-use crate::ScanType;
+use crate::scan_type::ScanType;
 use pnet::datalink::{ChannelType, Config};
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;

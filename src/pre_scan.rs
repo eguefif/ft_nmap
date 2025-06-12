@@ -1,19 +1,15 @@
+use ::pnet::packet::ip::IpNextHeaderProtocols;
+use pnet::datalink::{ChannelType, Config};
 use pnet::packet::icmp::echo_request::MutableEchoRequestPacket;
+use pnet::packet::icmp::{IcmpCode, IcmpType};
 use pnet::packet::ipv4::{Ipv4Packet, MutableIpv4Packet};
 use pnet::packet::MutablePacket;
 use pnet::transport::icmp_packet_iter;
-use pnet::{
-    datalink::{ChannelType, Config},
-    packet::{
-        icmp::{IcmpCode, IcmpType},
-        ip::IpNextHeaderProtocols,
-    },
-    transport::{transport_channel, TransportReceiver},
-};
+use pnet::transport::{transport_channel, TransportReceiver};
 use std::time::Duration;
 use std::{net::IpAddr, time::Instant};
 
-use crate::Scan;
+use crate::scanner::Scan;
 
 pub fn run_prescan(scan: &mut Scan) -> bool {
     let mut config = Config::default();
