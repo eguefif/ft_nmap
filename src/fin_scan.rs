@@ -2,12 +2,13 @@ use pnet::packet::tcp::TcpFlags;
 use pnet::packet::tcp::TcpPacket;
 
 use crate::packet_crafter::TcpFlag;
-use crate::tcp_transport::TCPTransport;
+use crate::tcp_transport::TcpPortScanner;
 use crate::PortState;
 use crate::Scan;
 
 pub fn run_fin_scan(scan: &mut Scan) {
-    let mut transport = TCPTransport::new(scan.dest_addr, scan.iname.clone(), &interpret_response);
+    let mut transport =
+        TcpPortScanner::new(scan.dest_addr, scan.iname.clone(), &interpret_response);
     for &port in &scan.ports {
         transport.dest_port = port;
         let port_status = scan_port(&mut transport, false);
@@ -15,7 +16,7 @@ pub fn run_fin_scan(scan: &mut Scan) {
     }
 }
 
-fn scan_port(transport: &mut TCPTransport, filtered: bool) -> PortState {
+fn scan_port(transport: &mut TcpPortScanner, filtered: bool) -> PortState {
     transport.send(&[TcpFlag::FIN]);
 
     let port_status = transport.listen_responses();

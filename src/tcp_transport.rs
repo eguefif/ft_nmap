@@ -25,7 +25,7 @@ pub enum Response {
     TIMEOUT,
 }
 
-pub struct TCPTransport<'a> {
+pub struct TcpPortScanner<'a> {
     tx: TransportSender,
     rx: TransportReceiver,
     source_addr: Ipv4Addr,
@@ -35,7 +35,7 @@ pub struct TCPTransport<'a> {
     interpret_response: &'a dyn Fn(Option<&TcpPacket>) -> PortState,
 }
 
-impl<'a> TCPTransport<'a> {
+impl<'a> TcpPortScanner<'a> {
     pub fn new(
         dest_addr: Ipv4Addr,
         iname: String,
