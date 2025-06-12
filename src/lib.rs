@@ -5,18 +5,13 @@ use scan_type::ScanType;
 use std::time::Duration;
 use tcp_port_scanner::TcpPortScanner;
 
-pub mod ack_scan;
 pub mod dns_lookup;
-pub mod fin_scan;
 pub mod interface;
-pub mod null_scan;
 pub mod packet_crafter;
 pub mod pre_scan;
 pub mod scan_report;
 pub mod scan_type;
-pub mod syn_scan;
 pub mod tcp_port_scanner;
-pub mod xmas_scan;
 
 pub struct Scan {
     pub iname: String,
@@ -44,7 +39,7 @@ impl Scan {
             dest_host: String::default(),
         }
     }
-    pub fn run_scan(&mut self) {
+    pub fn run(&mut self) {
         let mut scanner = TcpPortScanner::new(self.dest_addr, self.iname.clone(), &self.scan);
         for &port in &self.ports {
             let response = scanner.scan_port(port);

@@ -19,7 +19,7 @@ fn main() {
 
 fn run_scan(scan: &mut Scan) {
     let start = Instant::now();
-    scan.run_scan();
+    scan.run();
     scan.report.duration = start.elapsed();
 }
 
