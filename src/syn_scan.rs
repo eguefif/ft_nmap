@@ -3,6 +3,7 @@ use crate::tcp_port_scanner::TcpPortScanner;
 use crate::PortState;
 use crate::Scan;
 
+// Move this in the scan struct
 pub fn run_syn_scan(scan: &mut Scan) {
     let mut scanner = TcpPortScanner::new(scan.dest_addr, scan.iname.clone(), &scan.scan);
     for &port in &scan.ports {

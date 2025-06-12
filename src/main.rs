@@ -23,6 +23,7 @@ fn main() {
 
 fn run_scan(scan: &mut Scan) {
     let start = Instant::now();
+    // scan.run_scan
     match scan.scan {
         ScanType::SYN => run_syn_scan(scan),
         ScanType::NULL => run_null_scan(scan),
