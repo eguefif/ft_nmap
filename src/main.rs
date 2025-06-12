@@ -15,7 +15,7 @@ fn main() {
     if run_prescan(&mut scan) {
         run_scan(&mut scan);
     }
-    scan.report.display()
+    scan.report.display_report()
 }
 
 fn run_scan(scan: &mut Scan) {

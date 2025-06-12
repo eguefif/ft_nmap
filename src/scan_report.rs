@@ -56,7 +56,7 @@ impl ScanReport {
         }
     }
 
-    pub fn display(&self) {
+    pub fn display_report(&self) {
         if self.down {
             println!("Host seems down");
         }

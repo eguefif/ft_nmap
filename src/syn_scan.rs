@@ -31,15 +31,20 @@ fn scan_port(transport: &mut TCPTransport, filtered: bool) -> PortState {
     port_status
 }
 
-fn interpret_response(packet: &TcpPacket) -> PortState {
-    if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
-        && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
-    {
-        return PortState::OPEN;
-    }
+fn interpret_response(packet: Option<&TcpPacket>) -> PortState {
+    match packet {
+        Some(packet) => {
+            if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
+                && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
+            {
+                return PortState::OPEN;
+            }
 
-    if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
-        return PortState::CLOSED;
+            if packet.get_flags() & TcpFlags::RST == TcpFlags::RST {
+                return PortState::CLOSED;
+            }
+            return PortState::FILTERED;
+        }
+        None => PortState::FILTERED,
     }
-    return PortState::FILTERED;
 }

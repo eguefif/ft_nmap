@@ -32,14 +32,14 @@ pub struct TCPTransport<'a> {
     source_port: u16,
     dest_addr: Ipv4Addr,
     pub dest_port: u16,
-    interpret_response: &'a dyn Fn(&TcpPacket) -> PortState,
+    interpret_response: &'a dyn Fn(Option<&TcpPacket>) -> PortState,
 }
 
 impl<'a> TCPTransport<'a> {
     pub fn new(
         dest_addr: Ipv4Addr,
         iname: String,
-        interpret_response: &'a dyn Fn(&TcpPacket) -> PortState,
+        interpret_response: &'a dyn Fn(Option<&TcpPacket>) -> PortState,
     ) -> Self {
         let (rx, tx) = get_transports();
         let source_addr = get_source_addr(iname);
@@ -74,13 +74,14 @@ impl<'a> TCPTransport<'a> {
         }
     }
 
-    /// This function listen to the repsonse and uses the attribute `interpret_response`
+    /// This function listen to the response and uses the attribute `interpret_response`
     /// given by the user to return a PortState.
-    /// This function needs to return a PortState. It receives a TcpPacket.
+    /// The `interpret_reponse` function takes a PortState.
+    /// It receives a Option<TcpPacket>. None means the tcp connection has timeout.
     /// Here is an example of the interpret_response in the syn_scan
     ///
     /// ```rust
-    /// fn interpret_response(packet: &TcpPacket) -> PortState {
+    /// fn interpret_response(packet: Option<&TcpPacket>) -> PortState {
     ///     if packet.get_flags() & TcpFlags::SYN == TcpFlags::SYN
     ///         && packet.get_flags() & TcpFlags::ACK == TcpFlags::ACK
     ///     {
@@ -102,10 +103,10 @@ impl<'a> TCPTransport<'a> {
                     if should_dismiss_packet(&packet, self.source_port) {
                         continue;
                     }
-                    return (self.interpret_response)(&packet);
+                    return (self.interpret_response)(Some(&packet));
                 }
                 Ok(None) => {
-                    return PortState::FILTERED;
+                    return (self.interpret_response)(None);
                 }
                 Err(e) => eprintln!("Error while processing packet: {e}"),
             }
