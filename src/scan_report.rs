@@ -97,25 +97,25 @@ impl ScanReport {
                 open_filtered
             );
         }
-        println!("{:<10}{:<10}{:<10}", "PORT", "STATE", "SERVICE");
+        println!("{:<10}{:<15}{:<10}", "PORT", "STATE", "SERVICE");
         for (port, state) in self.ports.iter() {
             let service = self.get_service(port);
             let port = format!("{}/tcp", port);
             match state {
-                PortState::OPEN => println!("{:<10}{:<10}{:<10}", port, "open", service),
+                PortState::OPEN => println!("{:<10}{:<15}{:<10}", port, "open", service),
                 PortState::FILTERED => {
                     if filtered < 50 {
-                        println!("{:<10}{:<10}{:<10}", port, "filtered", service);
+                        println!("{:<10}{:<15}{:<10}", port, "filtered", service);
                     }
                 }
                 PortState::CLOSED => {
                     if closed < 50 {
-                        println!("{:<10}{:<10}{:<10}", port, "closed", service);
+                        println!("{:<10}{:<15}{:<10}", port, "closed", service);
                     }
                 }
                 PortState::OpenFiltered => {
                     if open_filtered < 50 {
-                        println!("{:<10}{:<10}{:<10}", port, "open|filtered", service);
+                        println!("{:<10}{:<15}{:<10}", port, "open|filtered", service);
                     }
                 }
                 PortState::UNDETERMINED => {}
