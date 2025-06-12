@@ -1,6 +1,6 @@
 use crate::interface::get_interface;
 use crate::packet_crafter::{build_packet, TcpFlag};
-use crate::PortState;
+use crate::{PortState, ScanType};
 use pnet::datalink::{ChannelType, Config};
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
@@ -31,8 +31,8 @@ pub struct TcpPortScanner<'a> {
     source_addr: Ipv4Addr,
     source_port: u16,
     dest_addr: Ipv4Addr,
-    pub dest_port: u16,
     interpret_response: &'a dyn Fn(Option<&TcpPacket>) -> PortState,
+    flags: Vec<TcpFlag>,
 }
 
 impl<'a> TcpPortScanner<'a> {
@@ -40,19 +40,35 @@ impl<'a> TcpPortScanner<'a> {
         dest_addr: Ipv4Addr,
         iname: String,
         interpret_response: &'a dyn Fn(Option<&TcpPacket>) -> PortState,
+        scan_type: &ScanType,
     ) -> Self {
         let (rx, tx) = get_transports();
         let source_addr = get_source_addr(iname);
         let source_port = get_source_port(source_addr);
+        let flags = get_flags(scan_type);
         Self {
             tx,
             rx,
             source_addr,
             dest_addr,
             source_port,
-            dest_port: 0,
             interpret_response,
+            flags,
         }
+    }
+
+    pub fn scan_port(&mut self, scan_port: u16) -> PortState {
+        self.send(&[TcpFlag::FIN], scan_port);
+
+        let port_status = self.listen_responses();
+        match port_status {
+            PortState::OPEN => self.send(&[TcpFlag::RST], scan_port),
+            PortState::FILTERED | PortState::OpenFiltered => {
+                return self.scan_port(scan_port);
+            }
+            PortState::CLOSED | PortState::UNFILTERED | PortState::UNDETERMINED => {}
+        }
+        port_status
     }
 
     /// This function send a probe using a list of flags.
@@ -60,9 +76,9 @@ impl<'a> TcpPortScanner<'a> {
     /// ```
     ///     transport.send(&[TcpFlag::SYN]);
     /// ```
-    pub fn send(&mut self, tcp_types: &[TcpFlag]) {
+    pub fn send(&mut self, tcp_types: &[TcpFlag], dest_port: u16) {
         let mut buffer = [0u8; 1500];
-        build_packet(&mut buffer, self.dest_port, self.source_port, tcp_types);
+        build_packet(&mut buffer, dest_port, self.source_port, tcp_types);
         let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
         packet.set_checksum(ipv4_checksum(
             &packet.to_immutable(),
@@ -154,4 +170,14 @@ fn should_dismiss_packet(packet: &TcpPacket, port_source: u16) -> bool {
         return true;
     }
     false
+}
+
+fn get_flags(scan_type: &ScanType) -> Vec<TcpFlag> {
+    match scan_type {
+        ScanType::SYN => vec![TcpFlag::RST],
+        ScanType::ACK => vec![TcpFlag::ACK],
+        ScanType::NULL => vec![],
+        ScanType::FIN => vec![TcpFlag::FIN],
+        ScanType::XMAS => vec![TcpFlag::RST, TcpFlag::URG, TcpFlag::PSH],
+    }
 }
