@@ -1,4 +1,7 @@
-use pnet::packet::tcp::{MutableTcpPacket, TcpOption, TcpOptionNumber};
+use pnet::packet::{
+    tcp::{MutableTcpPacket, TcpOption, TcpOptionNumber},
+    udp::MutableUdpPacket,
+};
 use rand::prelude::*;
 
 use crate::tcp_flag::TcpFlag;
@@ -32,7 +35,13 @@ fn get_flags(tcp_types: &[TcpFlag]) -> u8 {
     retval
 }
 
-pub fn build_udp_packet(buffer: &mut [u8], port: u16, source_port: u16) {}
+pub fn build_udp_packet(buffer: &mut [u8], dest_port: u16, source_port: u16) {
+    let mut udp_packet =
+        MutableUdpPacket::new(buffer).expect("Error: impossible to create udp packet");
+    udp_packet.set_source(source_port);
+    udp_packet.set_destination(dest_port);
+    udp_packet.set_length(8);
+}
 
 #[cfg(test)]
 mod tests {
