@@ -1,6 +1,6 @@
 use crate::interface::get_interface;
 use crate::packet_crafter::build_packet;
-use crate::scan_type::ScanType;
+use crate::scanner::ScanType;
 use crate::tcp_flag::{TcpFlag, TcpFlags};
 
 use std::net::{IpAddr, Ipv4Addr, TcpListener};

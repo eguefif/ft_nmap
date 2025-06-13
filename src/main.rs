@@ -1,8 +1,8 @@
 use chrono::Local;
 use ft_nmap::dns_lookup::{dns_lookup_host, dns_lookup_ip};
 use ft_nmap::pre_scan::run_prescan;
-use ft_nmap::scan_type::ScanType;
 use ft_nmap::scanner::Scan;
+use ft_nmap::scanner::ScanType;
 use std::env;
 use std::net::Ipv4Addr;
 use std::str::FromStr;
