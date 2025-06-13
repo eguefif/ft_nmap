@@ -23,7 +23,7 @@ const TIMEOUT_MS: u64 = 250;
 pub enum Response {
     TCP(TcpFlags),
     ICMP((u8, u8)),
-    UDP(u8),
+    UDP,
     TIMEOUT,
 }
 

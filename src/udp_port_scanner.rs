@@ -10,13 +10,14 @@ use pnet::datalink::{ChannelType, Config};
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
 use pnet::packet::udp::{ipv4_checksum, MutableUdpPacket, UdpPacket};
+use pnet::packet::Packet;
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::TransportProtocol::Ipv4;
 use pnet::transport::{
     icmp_packet_iter, transport_channel, udp_packet_iter, TransportReceiver, TransportSender,
 };
 
-const PACKET_SIZE: usize = 24;
+const PACKET_SIZE: usize = 8;
 const PORT_LOW: u16 = 10000;
 const PORT_HIGH: u16 = 64000;
 
@@ -74,6 +75,7 @@ impl UdpPortScanner {
             &self.source_addr,
             &self.dest_addr,
         ));
+        println!("bytes: {:?}", packet.packet());
         if let Err(e) = self.tx.send_to(packet, IpAddr::V4(self.dest_addr)) {
             eprintln!("Error: {e}");
         }
@@ -88,7 +90,7 @@ impl UdpPortScanner {
                     if should_dismiss_udp_packet(&packet, self.source_port) {
                         continue;
                     }
-                    return Response::UDP(5);
+                    return Response::UDP;
                 }
                 Ok(None) => break,
                 Err(e) => panic!("Error: error while listening tcp response: {e}"),
@@ -100,6 +102,7 @@ impl UdpPortScanner {
             match icmp_iter.next_with_timeout(timeout) {
                 Ok(Some((packet, addr))) => {
                     if let IpAddr::V4(addr_from_packet) = addr {
+                        println!("Addr {:?}", addr_from_packet);
                         if should_dismiss_icmp_packet(self.dest_addr, addr_from_packet) {
                             continue;
                         }

@@ -144,7 +144,7 @@ fn interpret_syn_scan_response(packet: Response) -> PortState {
             }
             return PortState::UNDETERMINED;
         }
-        Response::UDP(_) => return PortState::UNDETERMINED,
+        Response::UDP => return PortState::UNDETERMINED,
         Response::TIMEOUT => PortState::FILTERED,
     }
 }
@@ -163,7 +163,7 @@ fn interpret_xmas_null_fin_scan_response(packet: Response) -> PortState {
             }
             return PortState::UNDETERMINED;
         }
-        Response::UDP(_) => return PortState::UNDETERMINED,
+        Response::UDP => return PortState::UNDETERMINED,
         Response::TIMEOUT => PortState::OpenFiltered,
     }
 }
@@ -182,17 +182,28 @@ fn interpret_ack_scan_response(packet: Response) -> PortState {
             }
             return PortState::UNDETERMINED;
         }
-        Response::UDP(_) => return PortState::UNDETERMINED,
+        Response::UDP => return PortState::UNDETERMINED,
         Response::TIMEOUT => PortState::FILTERED,
     }
 }
 
 fn interpret_udp_scan_response(packet: Response) -> PortState {
     match packet {
-        Response::UDP(_) => {
+        Response::UDP => {
+            return PortState::OPEN;
+        }
+        Response::ICMP((icmp_type, code)) => {
+            println!("icmp type: {}, code {}", icmp_type, code);
+            if icmp_type == 3 {
+                if code == 3 {
+                    return PortState::CLOSED;
+                } else if [1, 2, 9, 10, 13].contains(&3) {
+                    return PortState::FILTERED;
+                }
+            }
             return PortState::UNDETERMINED;
         }
-        Response::ICMP(_) | Response::TCP(_) => return PortState::UNDETERMINED,
+        Response::TCP(_) => return PortState::UNDETERMINED,
         Response::TIMEOUT => PortState::FILTERED,
     }
 }
