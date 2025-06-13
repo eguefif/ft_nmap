@@ -1,7 +1,7 @@
 use pnet::packet::tcp::{MutableTcpPacket, TcpOption, TcpOptionNumber};
 use rand::prelude::*;
 
-use crate::tcp_port_scanner::TcpFlag;
+use crate::tcp_flag::TcpFlag;
 
 pub fn build_packet(buffer: &mut [u8], port: u16, source_port: u16, tcp_types: &[TcpFlag]) {
     let mut rng = rand::rng();
