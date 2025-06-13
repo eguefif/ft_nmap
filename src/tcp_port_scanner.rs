@@ -1,6 +1,7 @@
 use crate::interface::get_interface;
 use crate::packet_crafter::build_packet;
 use crate::scan_type::ScanType;
+use crate::tcp_flag::{TcpFlag, TcpFlags};
 
 use std::net::{IpAddr, Ipv4Addr, TcpListener};
 use std::time::Duration;
@@ -11,71 +12,17 @@ use pnet::packet::ip::IpNextHeaderProtocols;
 use pnet::packet::tcp::{ipv4_checksum, MutableTcpPacket};
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::TransportProtocol::Ipv4;
-use pnet::transport::{transport_channel, TransportReceiver, TransportSender};
+use pnet::transport::{icmp_packet_iter, transport_channel, TransportReceiver, TransportSender};
 use pnet::{packet::tcp::TcpPacket, transport::tcp_packet_iter};
 
 const PACKET_SIZE: usize = 24;
 const PORT_LOW: u16 = 10000;
 const PORT_HIGH: u16 = 64000;
 
-const TIMEOUT_MS: u64 = 1000;
-
-pub struct TcpFlags {
-    pub syn: bool,
-    pub fin: bool,
-    pub ack: bool,
-    pub rst: bool,
-    pub psh: bool,
-    pub urg: bool,
-    pub ece: bool,
-    pub cwr: bool,
-}
-
-impl TcpFlags {
-    pub fn new(tcp_packet: &TcpPacket) -> Self {
-        let flags = tcp_packet.get_flags();
-        Self {
-            syn: flags & TcpFlag::SYN.get_flag() == TcpFlag::SYN.get_flag(),
-            fin: flags & TcpFlag::FIN.get_flag() == TcpFlag::FIN.get_flag(),
-            ack: flags & TcpFlag::ACK.get_flag() == TcpFlag::ACK.get_flag(),
-            rst: flags & TcpFlag::RST.get_flag() == TcpFlag::RST.get_flag(),
-            psh: flags & TcpFlag::PSH.get_flag() == TcpFlag::PSH.get_flag(),
-            urg: flags & TcpFlag::URG.get_flag() == TcpFlag::URG.get_flag(),
-            ece: flags & TcpFlag::ECE.get_flag() == TcpFlag::ECE.get_flag(),
-            cwr: flags & TcpFlag::CWR.get_flag() == TcpFlag::CWR.get_flag(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum TcpFlag {
-    SYN,
-    RST,
-    ACK,
-    PSH,
-    FIN,
-    URG,
-    ECE,
-    CWR,
-}
-
-impl TcpFlag {
-    pub fn get_flag(&self) -> u8 {
-        match self {
-            TcpFlag::FIN => 0b0000_0001,
-            TcpFlag::SYN => 0b0000_0010,
-            TcpFlag::RST => 0b0000_0100,
-            TcpFlag::PSH => 0b0000_1000,
-            TcpFlag::ACK => 0b0001_0000,
-            TcpFlag::URG => 0b0010_0000,
-            TcpFlag::ECE => 0b0100_0000,
-            TcpFlag::CWR => 0b1000_0000,
-        }
-    }
-}
-
+const TIMEOUT_MS: u64 = 250;
 pub enum Response {
     TCP(TcpFlags),
+    ICMP((u8, u8)),
     TIMEOUT,
 }
 
@@ -144,23 +91,47 @@ impl TcpPortScanner {
         loop {
             match tcp_iter.next_with_timeout(timeout) {
                 Ok(Some((packet, _))) => {
-                    if should_dismiss_packet(&packet, self.source_port) {
+                    if should_dismiss_tcp_packet(&packet, self.source_port) {
                         continue;
                     }
                     let flags = TcpFlags::new(&packet);
                     return Response::TCP(flags);
                 }
-                Ok(None) => {
-                    return Response::TIMEOUT;
+                Ok(None) => break,
+                Err(e) => panic!("Error: error while listening tcp response: {e}"),
+            }
+        }
+
+        let mut icmp_iter = icmp_packet_iter(&mut self.rx);
+        loop {
+            match icmp_iter.next_with_timeout(timeout) {
+                Ok(Some((packet, addr))) => {
+                    if let IpAddr::V4(addr_from_packet) = addr {
+                        if should_dismiss_icmp_packet(self.dest_addr, addr_from_packet) {
+                            continue;
+                        }
+                        return Response::ICMP((
+                            packet.get_icmp_type().0,
+                            packet.get_icmp_code().0,
+                        ));
+                    }
                 }
-                Err(e) => panic!("Error: error while listening response: {e}"),
+                Ok(None) => return Response::TIMEOUT,
+                Err(e) => panic!("Error: error while listening icmp response: {e}"),
             }
         }
     }
 }
 
-fn should_dismiss_packet(packet: &TcpPacket, port_source: u16) -> bool {
+fn should_dismiss_tcp_packet(packet: &TcpPacket, port_source: u16) -> bool {
     if packet.get_destination() != port_source {
+        return true;
+    }
+    false
+}
+
+fn should_dismiss_icmp_packet(addr_target: Ipv4Addr, addr_from_packet: Ipv4Addr) -> bool {
+    if addr_from_packet != addr_target {
         return true;
     }
     false
