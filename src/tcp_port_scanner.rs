@@ -12,7 +12,7 @@ use pnet::packet::ip::IpNextHeaderProtocols;
 use pnet::packet::tcp::{ipv4_checksum, MutableTcpPacket};
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::TransportProtocol::Ipv4;
-use pnet::transport::{transport_channel, TransportReceiver, TransportSender};
+use pnet::transport::{icmp_packet_iter, transport_channel, TransportReceiver, TransportSender};
 use pnet::{packet::tcp::TcpPacket, transport::tcp_packet_iter};
 
 const PACKET_SIZE: usize = 24;
@@ -22,6 +22,7 @@ const PORT_HIGH: u16 = 64000;
 const TIMEOUT_MS: u64 = 1000;
 pub enum Response {
     TCP(TcpFlags),
+    ICMP((u8, u8)),
     TIMEOUT,
 }
 
@@ -97,9 +98,22 @@ impl TcpPortScanner {
                     return Response::TCP(flags);
                 }
                 Ok(None) => {
-                    return Response::TIMEOUT;
+                    break;
+                    //return Response::TIMEOUT;
                 }
-                Err(e) => panic!("Error: error while listening response: {e}"),
+                Err(e) => panic!("Error: error while listening tcp response: {e}"),
+            }
+        }
+
+        let mut icmp_iter = icmp_packet_iter(&mut self.rx);
+        loop {
+            match icmp_iter.next_with_timeout(timeout) {
+                Ok(Some((packet, _))) => {
+                    // TODO:: dimiss not related packet
+                    return Response::ICMP((packet.get_icmp_type().0, packet.get_icmp_code().0));
+                }
+                Ok(None) => return Response::TIMEOUT,
+                Err(e) => panic!("Error: error while listening icmp response: {e}"),
             }
         }
     }
