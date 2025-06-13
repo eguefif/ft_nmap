@@ -1,7 +1,6 @@
 use crate::interface::get_interface;
-use crate::packet_crafter::build_packet;
-use crate::scanner::{ScanType, Scanner};
-use crate::tcp_flag::{TcpFlag, TcpFlags};
+use crate::packet_crafter::build_udp_packet;
+use crate::scanner::Scanner;
 use crate::tcp_port_scanner::Response;
 
 use std::net::{IpAddr, Ipv4Addr, TcpListener};
@@ -10,11 +9,12 @@ use std::time::Duration;
 use pnet::datalink::{ChannelType, Config};
 use pnet::ipnetwork::IpNetwork;
 use pnet::packet::ip::IpNextHeaderProtocols;
-use pnet::packet::tcp::{ipv4_checksum, MutableTcpPacket};
+use pnet::packet::udp::{ipv4_checksum, MutableUdpPacket, UdpPacket};
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::TransportProtocol::Ipv4;
-use pnet::transport::{icmp_packet_iter, transport_channel, TransportReceiver, TransportSender};
-use pnet::{packet::tcp::TcpPacket, transport::tcp_packet_iter};
+use pnet::transport::{
+    icmp_packet_iter, transport_channel, udp_packet_iter, TransportReceiver, TransportSender,
+};
 
 const PACKET_SIZE: usize = 24;
 const PORT_LOW: u16 = 10000;
@@ -28,7 +28,6 @@ pub struct UdpPortScanner {
     source_addr: Ipv4Addr,
     source_port: u16,
     dest_addr: Ipv4Addr,
-    flags: Vec<TcpFlag>,
 }
 
 impl Scanner for UdpPortScanner {
@@ -53,25 +52,23 @@ impl Scanner for UdpPortScanner {
 }
 
 impl UdpPortScanner {
-    pub fn new(dest_addr: Ipv4Addr, iname: String, scan_type: &ScanType) -> Self {
+    pub fn new(dest_addr: Ipv4Addr, iname: String) -> Self {
         let (rx, tx) = get_transports();
         let source_addr = get_source_addr(iname);
         let source_port = get_source_port(source_addr);
-        let flags = scan_type.get_flags();
         Self {
             tx,
             rx,
             source_addr,
             dest_addr,
             source_port,
-            flags,
         }
     }
 
     fn send(&mut self, dest_port: u16) {
         let mut buffer = [0u8; 1500];
-        build_packet(&mut buffer, dest_port, self.source_port, &self.flags);
-        let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
+        build_udp_packet(&mut buffer, dest_port, self.source_port);
+        let mut packet = MutableUdpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
         packet.set_checksum(ipv4_checksum(
             &packet.to_immutable(),
             &self.source_addr,
@@ -83,16 +80,15 @@ impl UdpPortScanner {
     }
 
     fn listen_responses(&mut self) -> Response {
-        let mut tcp_iter = tcp_packet_iter(&mut self.rx);
+        let mut udp_iter = udp_packet_iter(&mut self.rx);
         let timeout = Duration::from_millis(TIMEOUT_MS);
         loop {
-            match tcp_iter.next_with_timeout(timeout) {
+            match udp_iter.next_with_timeout(timeout) {
                 Ok(Some((packet, _))) => {
-                    if should_dismiss_tcp_packet(&packet, self.source_port) {
+                    if should_dismiss_udp_packet(&packet, self.source_port) {
                         continue;
                     }
-                    let flags = TcpFlags::new(&packet);
-                    return Response::TCP(flags);
+                    return Response::UDP(5);
                 }
                 Ok(None) => break,
                 Err(e) => panic!("Error: error while listening tcp response: {e}"),
@@ -120,7 +116,7 @@ impl UdpPortScanner {
     }
 }
 
-fn should_dismiss_tcp_packet(packet: &TcpPacket, port_source: u16) -> bool {
+fn should_dismiss_udp_packet(packet: &UdpPacket, port_source: u16) -> bool {
     if packet.get_destination() != port_source {
         return true;
     }
@@ -162,7 +158,7 @@ fn get_transports() -> (TransportReceiver, TransportSender) {
     let mut config = Config::default();
     config.channel_type = ChannelType::Layer3(0x800);
 
-    let protocol = Layer4(Ipv4(IpNextHeaderProtocols::Tcp));
+    let protocol = Layer4(Ipv4(IpNextHeaderProtocols::Udp));
     match transport_channel(4096, protocol) {
         Ok((tx, rx)) => (rx, tx),
         Err(e) => panic!("Error: {e}"),

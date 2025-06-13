@@ -47,11 +47,7 @@ impl Scan {
 
     fn get_scanner(&self) -> Box<dyn Scanner> {
         match self.scan {
-            ScanType::UDP => Box::new(UdpPortScanner::new(
-                self.dest_addr,
-                self.iname.clone(),
-                &self.scan,
-            )),
+            ScanType::UDP => Box::new(UdpPortScanner::new(self.dest_addr, self.iname.clone())),
             _ => Box::new(TcpPortScanner::new(
                 self.dest_addr,
                 self.iname.clone(),

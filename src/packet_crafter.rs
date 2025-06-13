@@ -3,7 +3,7 @@ use rand::prelude::*;
 
 use crate::tcp_flag::TcpFlag;
 
-pub fn build_packet(buffer: &mut [u8], port: u16, source_port: u16, tcp_types: &[TcpFlag]) {
+pub fn build_tcp_packet(buffer: &mut [u8], port: u16, source_port: u16, tcp_types: &[TcpFlag]) {
     let mut rng = rand::rng();
     let mut packet =
         MutableTcpPacket::new(buffer).expect("Impossible to create mutable TCP packet");
@@ -31,6 +31,8 @@ fn get_flags(tcp_types: &[TcpFlag]) -> u8 {
     }
     retval
 }
+
+pub fn build_udp_packet(buffer: &mut [u8], port: u16, source_port: u16) {}
 
 #[cfg(test)]
 mod tests {

@@ -1,5 +1,5 @@
 use crate::interface::get_interface;
-use crate::packet_crafter::build_packet;
+use crate::packet_crafter::build_tcp_packet;
 use crate::scanner::{ScanType, Scanner};
 use crate::tcp_flag::{TcpFlag, TcpFlags};
 
@@ -76,7 +76,7 @@ impl TcpPortScanner {
 
     fn send(&mut self, dest_port: u16) {
         let mut buffer = [0u8; 1500];
-        build_packet(&mut buffer, dest_port, self.source_port, &self.flags);
+        build_tcp_packet(&mut buffer, dest_port, self.source_port, &self.flags);
         let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
         packet.set_checksum(ipv4_checksum(
             &packet.to_immutable(),
