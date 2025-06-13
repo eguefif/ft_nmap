@@ -34,7 +34,6 @@ pub struct TcpFlags {
 impl TcpFlags {
     pub fn new(tcp_packet: &TcpPacket) -> Self {
         let flags = tcp_packet.get_flags();
-        println!("flags: {:?}", flags);
         Self {
             syn: flags & TcpFlag::SYN.get_flag() == TcpFlag::SYN.get_flag(),
             fin: flags & TcpFlag::FIN.get_flag() == TcpFlag::FIN.get_flag(),
@@ -127,7 +126,6 @@ impl TcpPortScanner {
 
     fn send(&mut self, dest_port: u16) {
         let mut buffer = [0u8; 1500];
-        println!("flags sending: {:?}", self.flags);
         build_packet(&mut buffer, dest_port, self.source_port, &self.flags);
         let mut packet = MutableTcpPacket::new(&mut buffer[..PACKET_SIZE]).unwrap();
         packet.set_checksum(ipv4_checksum(

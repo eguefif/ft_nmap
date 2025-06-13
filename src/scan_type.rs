@@ -56,8 +56,7 @@ fn interpret_syn_scan_response(packet: Response) -> PortState {
             } else if flags.rst {
                 return PortState::CLOSED;
             }
-            // TODO: should we have something like unexpected syn response ?
-            return PortState::FILTERED;
+            return PortState::UNDETERMINED;
         }
         Response::TIMEOUT => PortState::FILTERED,
     }
@@ -81,7 +80,7 @@ fn interpret_ack_scan_response(packet: Response) -> PortState {
             if flags.rst {
                 return PortState::UNFILTERED;
             }
-            return PortState::FILTERED;
+            return PortState::UNDETERMINED;
         }
         Response::TIMEOUT => PortState::FILTERED,
     }
