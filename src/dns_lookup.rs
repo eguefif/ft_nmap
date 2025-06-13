@@ -2,7 +2,7 @@ use std::net::IpAddr;
 
 use dns_lookup::{lookup_addr, lookup_host};
 
-use crate::Scan;
+use crate::scanner::Scan;
 
 pub fn dns_lookup_host(scan: &mut Scan) {
     if let Ok(ips) = lookup_host(&scan.dest_host) {
