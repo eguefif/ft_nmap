@@ -1,7 +1,6 @@
-use crate::{
-    scanner::PortState,
-    tcp_port_scanner::{Response, TcpFlag},
-};
+use crate::scanner::PortState;
+use crate::tcp_flag::TcpFlag;
+use crate::tcp_port_scanner::Response;
 
 pub enum ScanType {
     SYN,
