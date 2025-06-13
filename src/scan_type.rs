@@ -58,7 +58,7 @@ fn interpret_syn_scan_response(packet: Response) -> PortState {
             return PortState::UNDETERMINED;
         }
         Response::ICMP((icmp_type, code)) => {
-            if icmp_type == 3 && [1, 2, 3, 9, 10, 13].contains(&code) == true {
+            if icmp_type == 3 && [1, 2, 3, 9, 10, 13].contains(&code) {
                 return PortState::FILTERED;
             }
             return PortState::UNDETERMINED;
@@ -76,7 +76,7 @@ fn interpret_xmas_null_fin_scan_response(packet: Response) -> PortState {
             return PortState::UNDETERMINED;
         }
         Response::ICMP((icmp_type, code)) => {
-            if icmp_type == 3 && [1, 2, 3, 9, 10, 13].contains(&code) == true {
+            if icmp_type == 3 && [1, 2, 3, 9, 10, 13].contains(&code) {
                 return PortState::FILTERED;
             }
             return PortState::UNDETERMINED;
@@ -94,7 +94,7 @@ fn interpret_ack_scan_response(packet: Response) -> PortState {
             return PortState::UNDETERMINED;
         }
         Response::ICMP((icmp_type, code)) => {
-            if icmp_type == 3 && [1, 2, 3, 9, 10, 13].contains(&code) == true {
+            if icmp_type == 3 && [1, 2, 3, 9, 10, 13].contains(&code) {
                 return PortState::FILTERED;
             }
             return PortState::UNDETERMINED;

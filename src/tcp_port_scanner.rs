@@ -19,7 +19,7 @@ const PACKET_SIZE: usize = 24;
 const PORT_LOW: u16 = 10000;
 const PORT_HIGH: u16 = 64000;
 
-const TIMEOUT_MS: u64 = 1000;
+const TIMEOUT_MS: u64 = 250;
 pub enum Response {
     TCP(TcpFlags),
     ICMP((u8, u8)),
@@ -91,16 +91,13 @@ impl TcpPortScanner {
         loop {
             match tcp_iter.next_with_timeout(timeout) {
                 Ok(Some((packet, _))) => {
-                    if should_dismiss_packet(&packet, self.source_port) {
+                    if should_dismiss_tcp_packet(&packet, self.source_port) {
                         continue;
                     }
                     let flags = TcpFlags::new(&packet);
                     return Response::TCP(flags);
                 }
-                Ok(None) => {
-                    break;
-                    //return Response::TIMEOUT;
-                }
+                Ok(None) => break,
                 Err(e) => panic!("Error: error while listening tcp response: {e}"),
             }
         }
@@ -108,9 +105,16 @@ impl TcpPortScanner {
         let mut icmp_iter = icmp_packet_iter(&mut self.rx);
         loop {
             match icmp_iter.next_with_timeout(timeout) {
-                Ok(Some((packet, _))) => {
-                    // TODO:: dimiss not related packet
-                    return Response::ICMP((packet.get_icmp_type().0, packet.get_icmp_code().0));
+                Ok(Some((packet, addr))) => {
+                    if let IpAddr::V4(addr_from_packet) = addr {
+                        if should_dismiss_icmp_packet(self.dest_addr, addr_from_packet) {
+                            continue;
+                        }
+                        return Response::ICMP((
+                            packet.get_icmp_type().0,
+                            packet.get_icmp_code().0,
+                        ));
+                    }
                 }
                 Ok(None) => return Response::TIMEOUT,
                 Err(e) => panic!("Error: error while listening icmp response: {e}"),
@@ -119,8 +123,15 @@ impl TcpPortScanner {
     }
 }
 
-fn should_dismiss_packet(packet: &TcpPacket, port_source: u16) -> bool {
+fn should_dismiss_tcp_packet(packet: &TcpPacket, port_source: u16) -> bool {
     if packet.get_destination() != port_source {
+        return true;
+    }
+    false
+}
+
+fn should_dismiss_icmp_packet(addr_target: Ipv4Addr, addr_from_packet: Ipv4Addr) -> bool {
+    if addr_from_packet != addr_target {
         return true;
     }
     false
