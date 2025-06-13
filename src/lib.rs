@@ -6,3 +6,4 @@ pub mod scan_report;
 pub mod scanner;
 pub mod tcp_flag;
 pub mod tcp_port_scanner;
+pub mod udp_port_scanner;

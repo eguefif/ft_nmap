@@ -2,6 +2,7 @@ use crate::scan_report::ScanReport;
 use crate::tcp_flag::TcpFlag;
 use crate::tcp_port_scanner::Response;
 use crate::tcp_port_scanner::TcpPortScanner;
+use crate::udp_port_scanner::UdpPortScanner;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::time::Duration;
 
@@ -15,6 +16,10 @@ pub struct Scan {
     pub report: ScanReport,
     pub latency: Duration,
     pub down: bool,
+}
+
+pub trait Scanner {
+    fn scan_port(&mut self, scan_port: u16) -> Response;
 }
 
 impl Scan {
@@ -32,11 +37,26 @@ impl Scan {
         }
     }
     pub fn run(&mut self) {
-        let mut scanner = TcpPortScanner::new(self.dest_addr, self.iname.clone(), &self.scan);
+        let mut scanner = self.get_scanner();
         for &port in &self.ports {
             let response = scanner.scan_port(port);
             let port_status = self.scan.interpret_response(response);
             self.report.ports.push((port, port_status));
+        }
+    }
+
+    fn get_scanner(&self) -> Box<dyn Scanner> {
+        match self.scan {
+            ScanType::UDP => Box::new(UdpPortScanner::new(
+                self.dest_addr,
+                self.iname.clone(),
+                &self.scan,
+            )),
+            _ => Box::new(TcpPortScanner::new(
+                self.dest_addr,
+                self.iname.clone(),
+                &self.scan,
+            )),
         }
     }
 }
@@ -69,6 +89,7 @@ pub enum ScanType {
     XMAS,
     NULL,
     ACK,
+    UDP,
 }
 
 impl ScanType {
@@ -80,6 +101,7 @@ impl ScanType {
                 'X' => ScanType::XMAS,
                 'F' => ScanType::FIN,
                 'A' => ScanType::ACK,
+                'U' => ScanType::UDP,
                 _ => panic!("Error: invalid -s scan type"),
             }
         } else {
@@ -94,6 +116,7 @@ impl ScanType {
                 interpret_xmas_null_fin_scan_response(response)
             }
             ScanType::ACK => interpret_ack_scan_response(response),
+            ScanType::UDP => interpret_udp_scan_response(response),
         }
     }
 
@@ -104,6 +127,7 @@ impl ScanType {
             ScanType::NULL => vec![],
             ScanType::FIN => vec![TcpFlag::FIN],
             ScanType::XMAS => vec![TcpFlag::RST, TcpFlag::URG, TcpFlag::PSH],
+            ScanType::UDP => panic!("Error: trying to get TCP flag for UDP scan"),
         }
     }
 }
@@ -124,6 +148,7 @@ fn interpret_syn_scan_response(packet: Response) -> PortState {
             }
             return PortState::UNDETERMINED;
         }
+        Response::UDP(_) => return PortState::UNDETERMINED,
         Response::TIMEOUT => PortState::FILTERED,
     }
 }
@@ -142,6 +167,7 @@ fn interpret_xmas_null_fin_scan_response(packet: Response) -> PortState {
             }
             return PortState::UNDETERMINED;
         }
+        Response::UDP(_) => return PortState::UNDETERMINED,
         Response::TIMEOUT => PortState::OpenFiltered,
     }
 }
@@ -160,6 +186,17 @@ fn interpret_ack_scan_response(packet: Response) -> PortState {
             }
             return PortState::UNDETERMINED;
         }
+        Response::UDP(_) => return PortState::UNDETERMINED,
+        Response::TIMEOUT => PortState::FILTERED,
+    }
+}
+
+fn interpret_udp_scan_response(packet: Response) -> PortState {
+    match packet {
+        Response::UDP(_) => {
+            return PortState::UNDETERMINED;
+        }
+        Response::ICMP(_) | Response::TCP(_) => return PortState::UNDETERMINED,
         Response::TIMEOUT => PortState::FILTERED,
     }
 }

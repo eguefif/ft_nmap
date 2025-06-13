@@ -2,6 +2,7 @@ use crate::interface::get_interface;
 use crate::packet_crafter::build_packet;
 use crate::scanner::{ScanType, Scanner};
 use crate::tcp_flag::{TcpFlag, TcpFlags};
+use crate::tcp_port_scanner::Response;
 
 use std::net::{IpAddr, Ipv4Addr, TcpListener};
 use std::time::Duration;
@@ -20,14 +21,8 @@ const PORT_LOW: u16 = 10000;
 const PORT_HIGH: u16 = 64000;
 
 const TIMEOUT_MS: u64 = 250;
-pub enum Response {
-    TCP(TcpFlags),
-    ICMP((u8, u8)),
-    UDP(u8),
-    TIMEOUT,
-}
 
-pub struct TcpPortScanner {
+pub struct UdpPortScanner {
     tx: TransportSender,
     rx: TransportReceiver,
     source_addr: Ipv4Addr,
@@ -36,7 +31,7 @@ pub struct TcpPortScanner {
     flags: Vec<TcpFlag>,
 }
 
-impl Scanner for TcpPortScanner {
+impl Scanner for UdpPortScanner {
     fn scan_port(&mut self, scan_port: u16) -> Response {
         let mut retry = true;
 
@@ -57,8 +52,7 @@ impl Scanner for TcpPortScanner {
     }
 }
 
-impl TcpPortScanner {
-    /// iname: String it is the network interface
+impl UdpPortScanner {
     pub fn new(dest_addr: Ipv4Addr, iname: String, scan_type: &ScanType) -> Self {
         let (rx, tx) = get_transports();
         let source_addr = get_source_addr(iname);
